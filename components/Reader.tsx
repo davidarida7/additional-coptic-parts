@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
-import { LibraryItem, Language, AppSettings } from '../types';
+import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
+import { LibraryItem, Language, AppSettings } from '../types.ts';
 
 interface ReaderProps {
   book: LibraryItem | null;
@@ -10,53 +9,133 @@ interface ReaderProps {
   onOverflow: (overflowing: boolean) => void;
 }
 
+interface ComputedSlide {
+  sectionTitle: string;
+  sectionId: string;
+  content: { [key in Language]?: string[] };
+  slideIndex: number;
+  totalSlidesInSection: number;
+}
+
 export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId, onTargetReached, onOverflow }) => {
-  const [currentPartIndex, setCurrentPartIndex] = useState(0);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lastBookIdRef = useRef<string | null>(null);
 
-  // Flatten book sections into parts for easy linear navigation
-  const allParts = useMemo(() => {
-    if (!book || !book.sections) return [];
-    return book.sections.flatMap(section => 
-      section.parts.map(part => ({ ...part, sectionTitle: section.title, sectionId: section.id }))
-    );
-  }, [book]);
-
-  // Ensure currentPartIndex is always within bounds of the current allParts array
-  // This prevents crashes during book transitions before the useLayoutEffect can reset the index
-  const safeIndex = currentPartIndex < allParts.length ? currentPartIndex : 0;
-  const safeCurrentPart = allParts[safeIndex];
-
-  // Language management
   const primaryLangs = [Language.ENGLISH, Language.COPTIC, Language.ARABIC];
   const secondaryLangs = [Language.TRANSLITERATED_ENGLISH, Language.TRANSLITERATED_ARABIC];
 
-  const getActiveLangsForTier = (tier: Language[]) => {
-    const globalOrdered = tier.filter(l => settings.languages.includes(l));
-    if (!safeCurrentPart) return [];
-    return globalOrdered.filter(lang => {
-      const content = safeCurrentPart.content[lang];
-      return content && content.length > 0 && content.some(p => p.trim() !== '');
-    });
+  /**
+   * SCRIPT WEIGHT CALIBRATION (REFINED):
+   * These multipliers determine horizontal width distribution.
+   * Coptic characters are wide and wrap quickly; they need MORE width (1.4x) to avoid vertical stretching.
+   * Arabic is concise and needs LESS width (0.75x) to maintain balance.
+   */
+  const getLangWeight = (lang: Language) => {
+    switch (lang) {
+      case Language.COPTIC: return 1.45; // High horizontal priority to prevent vertical stacking
+      case Language.ARABIC: return 0.75; // Moderate priority
+      case Language.TRANSLITERATED_ARABIC: return 0.85;
+      case Language.TRANSLITERATED_ENGLISH: return 1.0;
+      default: return 1.1; // English base (slightly boosted for EB Garamond width)
+    }
   };
 
-  const activePrimaryLangs = useMemo(() => getActiveLangsForTier(primaryLangs), [safeCurrentPart, settings.languages]);
-  const activeSecondaryLangs = useMemo(() => getActiveLangsForTier(secondaryLangs), [safeCurrentPart, settings.languages]);
+  /**
+   * VISUAL SIZE SCALING (REFINED):
+   * Fine-tuned to make Coptic look cohesive with EB Garamond.
+   */
+  const getScaledFontSize = (lang: Language, baseSize: number) => {
+    switch (lang) {
+      case Language.COPTIC: return baseSize * 1.08; // Slight boost to match EB Garamond x-height
+      case Language.ARABIC: return baseSize * 1.02; // Amiri is naturally tall
+      case Language.TRANSLITERATED_ARABIC: 
+      case Language.TRANSLITERATED_ENGLISH: return baseSize * 0.75;
+      default: return baseSize; 
+    }
+  };
 
-  const sectionStats = useMemo(() => {
-    if (!safeCurrentPart || allParts.length === 0) return { index: 0, total: 0 };
-    const sectionParts = allParts.filter(p => p.sectionId === safeCurrentPart.sectionId);
-    const indexInSection = sectionParts.findIndex(p => p.id === safeCurrentPart.id);
-    return { index: indexInSection + 1, total: sectionParts.length };
-  }, [allParts, safeCurrentPart]);
+  const allSlides = useMemo(() => {
+    if (!book || !book.sections) return [];
+    const computed: ComputedSlide[] = [];
+    
+    book.sections.forEach(section => {
+      section.parts.forEach((part, partIdx) => {
+        computed.push({
+          sectionTitle: section.title,
+          sectionId: section.id,
+          content: part.content,
+          slideIndex: partIdx + 1,
+          totalSlidesInSection: section.parts.length,
+        });
+      });
+    });
 
-  // Overflow Detection
+    return computed;
+  }, [book]);
+
+  const safeSlide = allSlides[currentSlideIndex] || null;
+
+  /**
+   * DYNAMIC COLUMN BALANCING (REAL-TIME REACTIVE):
+   * Now explicitly tied to settings.fontSize to ensure the layout 
+   * shifts properly when the user resizes text.
+   */
+  const currentColumnWidths = useMemo(() => {
+    if (!safeSlide) return {};
+    
+    const slideActivePrimary = primaryLangs.filter(l => 
+      settings.languages.includes(l) && 
+      safeSlide.content[l]?.some(text => text.trim())
+    );
+
+    const primaryWeights = slideActivePrimary.map(l => {
+      const texts = safeSlide.content[l] || [];
+      const charCount = texts.join(' ').length;
+      
+      // We also apply a small "font scale factor" to the width math
+      // Large fonts require wider columns to maintain readable lines
+      const fontModifier = (settings.fontSize / 24);
+      return Math.max(180, (charCount * getLangWeight(l)) * fontModifier);
+    });
+
+    const totalPrimaryWeight = primaryWeights.reduce((a, b) => a + b, 0) || 1;
+    const widths: { [key: string]: string } = {};
+    
+    slideActivePrimary.forEach((l, i) => {
+      widths[l] = `${(primaryWeights[i] / totalPrimaryWeight) * 100}fr`;
+    });
+
+    return widths;
+  }, [safeSlide, settings.languages, settings.fontSize]);
+
+  const activePrimary = useMemo(() => {
+    if (!safeSlide) return [];
+    return primaryLangs.filter(lang => 
+      settings.languages.includes(lang) && 
+      safeSlide.content[lang]?.some(p => p.trim() !== '')
+    );
+  }, [safeSlide, settings.languages]);
+
+  const activeSecondary = useMemo(() => {
+    if (!safeSlide) return [];
+    return secondaryLangs.filter(lang => 
+      settings.languages.includes(lang) && 
+      safeSlide.content[lang]?.some(p => p.trim() !== '')
+    );
+  }, [safeSlide, settings.languages]);
+
+  const getGridStyle = (langs: Language[]) => {
+    if (langs.length <= 1 || !safeSlide) return { gridTemplateColumns: '1fr' };
+    const frs = langs.map(l => currentColumnWidths[l] || '1fr').join(' ');
+    return { gridTemplateColumns: frs };
+  };
+
   useLayoutEffect(() => {
     const checkOverflow = () => {
       if (contentRef.current && containerRef.current) {
-        const isTooBig = contentRef.current.scrollHeight > (containerRef.current.clientHeight * 0.9);
+        const isTooBig = contentRef.current.scrollHeight > (containerRef.current.clientHeight * 0.95);
         onOverflow(isTooBig);
       }
     };
@@ -65,34 +144,37 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
     if (containerRef.current) ro.observe(containerRef.current);
     if (contentRef.current) ro.observe(contentRef.current);
     return () => ro.disconnect();
-  }, [safeCurrentPart, settings.fontSize, activePrimaryLangs, activeSecondaryLangs, onOverflow]);
+  }, [safeSlide, settings.fontSize, onOverflow, currentColumnWidths]);
 
-  // ROBUST NAVIGATION LOGIC
   useLayoutEffect(() => {
-    if (!book || allParts.length === 0) return;
-
+    if (!book || allSlides.length === 0) return;
     const bookChanged = lastBookIdRef.current !== book.id;
-
     if (targetSectionId) {
-      const targetIndex = allParts.findIndex(p => p.sectionId === targetSectionId);
-      if (targetIndex !== -1) {
-        setCurrentPartIndex(targetIndex);
+      const idx = allSlides.findIndex(s => s.sectionId === targetSectionId);
+      if (idx !== -1) {
+        setCurrentSlideIndex(idx);
         onTargetReached();
         lastBookIdRef.current = book.id;
         return;
       }
     }
-
     if (bookChanged) {
-      setCurrentPartIndex(0);
+      setCurrentSlideIndex(0);
       lastBookIdRef.current = book.id;
     }
-  }, [book?.id, targetSectionId, allParts, onTargetReached]);
+  }, [book?.id, targetSectionId, allSlides, onTargetReached]);
 
-  if (!book || !book.sections || allParts.length === 0 || !safeCurrentPart) {
+  const handleNav = (e: React.MouseEvent) => {
+    const { clientX, currentTarget } = e;
+    const { width } = currentTarget.getBoundingClientRect();
+    if (clientX < width / 3) setCurrentSlideIndex(prev => Math.max(0, prev - 1));
+    else setCurrentSlideIndex(prev => Math.min(allSlides.length - 1, prev + 1));
+  };
+
+  if (!book || !safeSlide) {
     return (
-      <div className="flex-1 flex flex-col bg-black animate-fadeIn relative overflow-hidden h-screen w-screen">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#c5a059]/5 via-transparent to-transparent opacity-30" />
+      <div className="flex-1 flex flex-col bg-black animate-fadeIn relative h-screen w-screen overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#c5a05911_0%,_transparent_70%)] opacity-30" />
         <div className="flex-1 flex flex-col items-center justify-center pt-16 px-8 text-center relative z-10">
           <h1 className="text-2xl md:text-5xl font-cinzel gold-text font-bold tracking-[0.6em] mb-12 md:mb-20 uppercase drop-shadow-[0_0_15px_rgba(197,160,89,0.3)] leading-tight">
             Additional Coptic Parts
@@ -118,89 +200,69 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
     );
   }
 
-  const handlePresentationClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const { clientX, currentTarget } = e;
-    const { width } = currentTarget.getBoundingClientRect();
-    if (clientX < width / 2) setCurrentPartIndex(prev => Math.max(0, prev - 1));
-    else setCurrentPartIndex(prev => Math.min(allParts.length - 1, prev + 1));
-  };
-
-  const renderPartContent = (part: any) => {
-    if (!part) return null;
-    const allActive = [...activePrimaryLangs, ...activeSecondaryLangs];
-    const maxParagraphs = Math.max(...allActive.map(lang => (part.content[lang] || []).length), 0);
-    const getGridClass = (count: number) => count === 3 ? 'grid-cols-3' : count === 2 ? 'grid-cols-2' : 'grid-cols-1';
-
-    return (
-      <div ref={contentRef} key={part.id} className="w-full animate-fadeIn transition-all duration-500 select-none max-w-[95vw] mx-auto py-10">
-        <div className="text-center mb-10 md:mb-16">
-          <span className="text-[10px] md:text-xs tracking-[0.5em] gold-text opacity-40 uppercase font-cinzel">
-            {part.sectionTitle}
-          </span>
-        </div>
-        <div className="flex flex-col space-y-12 md:space-y-16 w-full">
-          {Array.from({ length: maxParagraphs }).map((_, pIndex) => (
-            <div key={`${part.id}-block-${pIndex}`} className="flex flex-col space-y-6 md:space-y-10">
-              {activePrimaryLangs.length > 0 && (
-                <div className={`grid gap-8 md:gap-16 ${getGridClass(activePrimaryLangs.length)} w-full items-start px-4 md:px-0`}>
-                  {activePrimaryLangs.map((lang) => {
-                    const content = part.content[lang] || [];
-                    const p = content[pIndex];
-                    const isAr = lang === Language.ARABIC;
-                    return (
-                      <div key={`${lang}-${pIndex}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                        {p && (
-                          <div className={`leading-[1.6] text-gray-100 transition-all ${lang === Language.COPTIC ? 'font-coptic' : isAr ? 'font-arabic' : 'font-inter'}`}
-                               style={{ fontSize: `${settings.fontSize}px` }}>
-                            <p>{p}</p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {activeSecondaryLangs.length > 0 && (
-                <div className={`grid gap-8 md:gap-16 ${getGridClass(activeSecondaryLangs.length)} w-full items-start px-4 md:px-0`}>
-                  {activeSecondaryLangs.map((lang) => {
-                    const content = part.content[lang] || [];
-                    const p = content[pIndex];
-                    const isAr = lang === Language.TRANSLITERATED_ARABIC;
-                    return (
-                      <div key={`${lang}-${pIndex}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                        {p && (
-                          <div className={`leading-[1.4] gold-text opacity-70 transition-all italic ${isAr ? 'font-arabic' : 'font-inter'}`}
-                               style={{ fontSize: `${settings.fontSize * 0.75}px` }}>
-                            <p>{p}</p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div ref={containerRef} onClick={handlePresentationClick} className="flex-1 flex flex-col min-h-0 bg-black relative overflow-hidden cursor-pointer">
-      <div className="flex-1 flex flex-col items-center w-full px-6 md:px-12 py-10 justify-center overflow-hidden">
-        <div className="w-full h-full flex flex-col justify-center animate-fadeIn relative">
-          <div className="w-full transition-all duration-700">
-            {renderPartContent(safeCurrentPart)}
+    <div ref={containerRef} onClick={handleNav} className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-10">
+        <div ref={contentRef} className="w-full max-w-[98vw] animate-fadeIn transition-all duration-300">
+          <div className="text-center mb-8 opacity-30">
+            <span className="text-[9px] md:text-xs tracking-[0.6em] gold-text uppercase font-cinzel">
+              {safeSlide.sectionTitle}
+            </span>
+          </div>
+
+          <div className="space-y-10 md:space-y-14">
+            {Array.from({ 
+              length: (Object.values(safeSlide.content) as (string[] | undefined)[]).reduce((max: number, arr) => Math.max(max, arr?.length || 0), 0)
+            }).map((_, pIdx) => (
+              <div key={`p-row-${pIdx}`} className="space-y-4 md:space-y-6">
+                {activePrimary.length > 0 && (
+                  <div className="grid gap-8 md:gap-16 w-full items-start" style={getGridStyle(activePrimary)}>
+                    {activePrimary.map(lang => {
+                      const text = safeSlide.content[lang]?.[pIdx];
+                      const isAr = lang === Language.ARABIC;
+                      const isEn = lang === Language.ENGLISH;
+                      const isCop = lang === Language.COPTIC;
+                      return text ? (
+                        <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
+                          <div className={`leading-[1.45] text-gray-100 transition-all ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
+                               style={{ fontSize: `${getScaledFontSize(lang, settings.fontSize)}px` }}>
+                            {text}
+                          </div>
+                        </div>
+                      ) : <div key={`${lang}-${pIdx}`} />;
+                    })}
+                  </div>
+                )}
+
+                {activeSecondary.length > 0 && (
+                  <div className="grid gap-8 md:gap-16 w-full items-start" style={getGridStyle(activeSecondary)}>
+                    {activeSecondary.map(lang => {
+                      const text = safeSlide.content[lang]?.[pIdx];
+                      const isAr = lang === Language.TRANSLITERATED_ARABIC;
+                      const isEn = lang === Language.TRANSLITERATED_ENGLISH;
+                      return text ? (
+                        <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
+                          <div className={`leading-snug gold-text opacity-50 transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
+                               style={{ fontSize: `${getScaledFontSize(lang, settings.fontSize)}px` }}>
+                            {text}
+                          </div>
+                        </div>
+                      ) : <div key={`${lang}-${pIdx}`} />;
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      <div className="fixed bottom-8 right-8 z-[80] select-none pointer-events-none">
-         <div className="bg-black/60 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/10 shadow-2xl flex flex-col items-center">
-           <span className="font-cinzel text-[10px] md:text-xs text-gray-400 tracking-[0.3em] uppercase">
-             {sectionStats.index} <span className="opacity-30 mx-1">/</span> {sectionStats.total}
-           </span>
-         </div>
+
+      <div className="fixed bottom-6 right-6 z-[80] pointer-events-none">
+        <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/5 flex items-center gap-2">
+          <span className="font-cinzel text-[9px] text-gray-500 tracking-widest uppercase">
+            {safeSlide.slideIndex} / {safeSlide.totalSlidesInSection}
+          </span>
+        </div>
       </div>
     </div>
   );
