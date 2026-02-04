@@ -6,6 +6,10 @@ export class ContentService {
   private static rawTextKey = 'coptic_reader_raw_text';
   private static googleDocIdKey = 'coptic_reader_google_doc_id';
 
+  private static slugify(text: string): string {
+    return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
   static async getLibrary(): Promise<LibraryItem[]> {
     const cached = localStorage.getItem(this.storageKey);
     if (cached) {
@@ -37,14 +41,8 @@ export class ContentService {
     }
   }
 
-  /**
-   * Fetches the plain text content of a public Google Doc.
-   * Document must be shared as "Anyone with the link can view".
-   */
   static async fetchGoogleDocContent(docId: string): Promise<string> {
     if (!docId) throw new Error("No Document ID provided");
-    
-    // We use the export?format=txt endpoint which returns plain text
     const url = `https://docs.google.com/document/d/${docId}/export?format=txt`;
     
     try {
@@ -71,10 +69,12 @@ export class ContentService {
     let currentSection: LiturgySection | null = null;
     let currentPart: LiturgicalPart | null = null;
     let currentLang: Language | null = null;
+    let partCount = 0;
 
     const createNewPart = () => {
+      partCount++;
       currentPart = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: `part-${currentSection?.id || 'root'}-${partCount}`,
         type: 'prayer',
         content: {}
       };
@@ -88,15 +88,27 @@ export class ContentService {
       if (!trimmed && !currentLang) return; 
 
       if (trimmed.startsWith('###')) {
-        currentSection = { id: Math.random().toString(36).substr(2, 9), title: trimmed.replace('###', '').trim(), parts: [] };
+        const title = trimmed.replace('###', '').trim();
+        currentSection = { 
+          id: `sec-${this.slugify(currentBook?.title || '')}-${this.slugify(title)}`, 
+          title, 
+          parts: [] 
+        };
         if (currentBook) {
           if (!currentBook.sections) currentBook.sections = [];
           currentBook.sections.push(currentSection);
         }
+        partCount = 0;
         createNewPart();
         currentLang = null;
       } else if (trimmed.startsWith('##')) {
-        currentBook = { id: Math.random().toString(36).substr(2, 9), title: trimmed.replace('##', '').trim(), type: 'book', sections: [] };
+        const title = trimmed.replace('##', '').trim();
+        currentBook = { 
+          id: `book-${this.slugify(currentCat?.title || '')}-${this.slugify(title)}`, 
+          title, 
+          type: 'book', 
+          sections: [] 
+        };
         if (currentCat) {
           if (!currentCat.children) currentCat.children = [];
           currentCat.children.push(currentBook);
@@ -104,7 +116,13 @@ export class ContentService {
         currentSection = null;
         currentPart = null;
       } else if (trimmed.startsWith('#')) {
-        currentCat = { id: Math.random().toString(36).substr(2, 9), title: trimmed.replace('#', '').trim(), type: 'category', children: [] };
+        const title = trimmed.replace('#', '').trim();
+        currentCat = { 
+          id: `cat-${this.slugify(title)}`, 
+          title, 
+          type: 'category', 
+          children: [] 
+        };
         library.push(currentCat);
         currentBook = null;
         currentSection = null;
