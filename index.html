@@ -56,7 +56,21 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Using Babel to transpile index.tsx on-the-fly to solve MIME type issues on static hosts like GitHub Pages -->
-    <script type="text/babel" data-presets="react,typescript" data-type="module" src="./index.tsx"></script>
+    <script>
+      /**
+       * Fixed: Babel Standalone bug workaround.
+       * When using data-type="module", Babel often incorrectly attempts to inject 
+       * preset-env with a faulty 'esmodules' target, causing the crash you observed.
+       * We manually register a preset to override this behavior.
+       */
+      Babel.registerPreset('liturgical-preset', {
+        presets: [
+          [Babel.availablePresets['env'], { modules: false, targets: { browsers: '> 0.25%, not dead' } }],
+          Babel.availablePresets['react'],
+          Babel.availablePresets['typescript']
+        ]
+      });
+    </script>
+    <script type="text/babel" data-presets="liturgical-preset" data-type="module" src="./index.tsx"></script>
 </body>
 </html>
