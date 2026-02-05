@@ -204,12 +204,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
 
   // --- RENDER TITLE SLIDE (MULTI-LINE & SCRIPT AWARE) ---
   if (safeSlide.type === 'title') {
-    // Split by explicit delimiters, then further split where English meets Arabic/Coptic
+    // Define script ranges
+    const LATIN = "[a-zA-Z0-9.,!?;:]";
+    const ARABIC = "[\u0600-\u06FF]";
+    const COPTIC = "[\u2C80-\u2CFF\u0370-\u03FF]";
+
+    // Refined splitting logic to separate ALL script boundaries
     const titleParts = safeSlide.sectionTitle
       .split(/[/|]|\n/)
       .flatMap(p => {
-        // Regex splits boundary between Latin (a-zA-Z) and Non-Latin scripts (Arabic, Coptic)
-        return p.split(/(?<=[a-zA-Z0-9.,!?;:])\s+(?=[\u0600-\u06FF\u2C80-\u2CFF\u0370-\u03FF])|(?<=[\u0600-\u06FF\u2C80-\u2CFF\u0370-\u03FF])\s+(?=[a-zA-Z0-9.,!?;:])/);
+        // We look for any transition between English/Latin, Arabic, or Coptic scripts
+        const boundaryRegex = new RegExp(
+          `(?<=${LATIN})\\s+(?=${ARABIC}|${COPTIC})|` +
+          `(?<=${ARABIC}|${COPTIC})\\s+(?=${LATIN})|` +
+          `(?<=${ARABIC})\\s+(?=${COPTIC})|` +
+          `(?<=${COPTIC})\\s+(?=${ARABIC})`
+        );
+        return p.split(boundaryRegex);
       })
       .map(p => p.trim())
       .filter(Boolean);
@@ -224,7 +235,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
             const isCoptic = /[\u2C80-\u2CFF\u0370-\u03FF]/.test(part);
             return (
               <h2 key={i} 
-                  className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.2em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
+                  className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.15em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
                   dir={isArabic ? 'rtl' : 'ltr'}>
                 {part}
               </h2>
