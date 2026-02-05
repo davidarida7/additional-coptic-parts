@@ -10,9 +10,10 @@ interface ReaderProps {
 }
 
 interface ComputedSlide {
+  type: 'title' | 'content';
   sectionTitle: string;
   sectionId: string;
-  content: { [key in Language]?: string[] };
+  content?: { [key in Language]?: string[] };
   slideIndex: number;
   totalSlidesInSection: number;
 }
@@ -27,31 +28,25 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
   const secondaryLangs = [Language.TRANSLITERATED_ENGLISH, Language.TRANSLITERATED_ARABIC];
 
   /**
-   * SCRIPT WEIGHT CALIBRATION (REFINED):
-   * These multipliers determine horizontal width distribution.
-   * Coptic characters are wide and wrap quickly; they need MORE width (1.4x) to avoid vertical stretching.
-   * Arabic is concise and needs LESS width (0.75x) to maintain balance.
+   * REVISED HEIGHT-PARITY FOOTPRINTS:
+   * To match column heights, we must give "taller" scripts more horizontal space.
+   * Arabic is dense vertically, so we increase its horizontal footprint to squash its height.
    */
-  const getLangWeight = (lang: Language) => {
+  const getLangHorizontalFootprint = (lang: Language) => {
     switch (lang) {
-      case Language.COPTIC: return 1.45; // High horizontal priority to prevent vertical stacking
-      case Language.ARABIC: return 0.75; // Moderate priority
-      case Language.TRANSLITERATED_ARABIC: return 0.85;
-      case Language.TRANSLITERATED_ENGLISH: return 1.0;
-      default: return 1.1; // English base (slightly boosted for EB Garamond width)
+      case Language.COPTIC: return 2.2; 
+      case Language.ARABIC: return 1.6; // Increased further for better height parity
+      case Language.TRANSLITERATED_ARABIC: return 1.4; 
+      case Language.TRANSLITERATED_ENGLISH: return 1.15;
+      default: return 1.15;
     }
   };
 
-  /**
-   * VISUAL SIZE SCALING (REFINED):
-   * Fine-tuned to make Coptic look cohesive with EB Garamond.
-   */
   const getScaledFontSize = (lang: Language, baseSize: number) => {
     switch (lang) {
-      case Language.COPTIC: return baseSize * 1.08; // Slight boost to match EB Garamond x-height
-      case Language.ARABIC: return baseSize * 1.02; // Amiri is naturally tall
-      case Language.TRANSLITERATED_ARABIC: 
-      case Language.TRANSLITERATED_ENGLISH: return baseSize * 0.75;
+      case Language.COPTIC: return baseSize * 1.25; 
+      case Language.ARABIC: 
+      case Language.TRANSLITERATED_ARABIC: return baseSize * 1.15; 
       default: return baseSize; 
     }
   };
@@ -61,8 +56,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
     const computed: ComputedSlide[] = [];
     
     book.sections.forEach(section => {
+      computed.push({
+        type: 'title',
+        sectionTitle: section.title,
+        sectionId: section.id,
+        slideIndex: 0,
+        totalSlidesInSection: section.parts.length,
+      });
+
       section.parts.forEach((part, partIdx) => {
         computed.push({
+          type: 'content',
           sectionTitle: section.title,
           sectionId: section.id,
           content: part.content,
@@ -78,64 +82,62 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
   const safeSlide = allSlides[currentSlideIndex] || null;
 
   /**
-   * DYNAMIC COLUMN BALANCING (REAL-TIME REACTIVE):
-   * Now explicitly tied to settings.fontSize to ensure the layout 
-   * shifts properly when the user resizes text.
+   * VERTICAL ALIGNMENT ENGINE:
+   * Dynamically balances widths to minimize height discrepancies.
    */
   const currentColumnWidths = useMemo(() => {
-    if (!safeSlide) return {};
+    if (!safeSlide || safeSlide.type === 'title') return {};
     
     const slideActivePrimary = primaryLangs.filter(l => 
       settings.languages.includes(l) && 
-      safeSlide.content[l]?.some(text => text.trim())
+      safeSlide.content?.[l]?.some(text => text.trim())
     );
 
+    const pressure = Math.pow(settings.fontSize / 22, 1.4);
+
     const primaryWeights = slideActivePrimary.map(l => {
-      const texts = safeSlide.content[l] || [];
-      const charCount = texts.join(' ').length;
-      
-      // We also apply a small "font scale factor" to the width math
-      // Large fonts require wider columns to maintain readable lines
-      const fontModifier = (settings.fontSize / 24);
-      return Math.max(180, (charCount * getLangWeight(l)) * fontModifier);
+      const stanzas = safeSlide.content?.[l] || [];
+      const maxStanzaLength = stanzas.reduce((max, s) => Math.max(max, s.length), 0);
+      const footprint = getLangHorizontalFootprint(l);
+      return Math.max(100, maxStanzaLength * footprint * pressure);
     });
 
-    const totalPrimaryWeight = primaryWeights.reduce((a, b) => a + b, 0) || 1;
+    const totalWeight = primaryWeights.reduce((a, b) => a + b, 0) || 1;
     const widths: { [key: string]: string } = {};
     
     slideActivePrimary.forEach((l, i) => {
-      widths[l] = `${(primaryWeights[i] / totalPrimaryWeight) * 100}fr`;
+      widths[l] = `${(primaryWeights[i] / totalWeight) * 100}fr`;
     });
 
     return widths;
   }, [safeSlide, settings.languages, settings.fontSize]);
 
   const activePrimary = useMemo(() => {
-    if (!safeSlide) return [];
+    if (!safeSlide || safeSlide.type === 'title') return [];
     return primaryLangs.filter(lang => 
       settings.languages.includes(lang) && 
-      safeSlide.content[lang]?.some(p => p.trim() !== '')
+      safeSlide.content?.[lang]?.some(p => p.trim() !== '')
     );
   }, [safeSlide, settings.languages]);
 
   const activeSecondary = useMemo(() => {
-    if (!safeSlide) return [];
+    if (!safeSlide || safeSlide.type === 'title') return [];
     return secondaryLangs.filter(lang => 
       settings.languages.includes(lang) && 
-      safeSlide.content[lang]?.some(p => p.trim() !== '')
+      safeSlide.content?.[lang]?.some(p => p.trim() !== '')
     );
   }, [safeSlide, settings.languages]);
 
   const getGridStyle = (langs: Language[]) => {
     if (langs.length <= 1 || !safeSlide) return { gridTemplateColumns: '1fr' };
     const frs = langs.map(l => currentColumnWidths[l] || '1fr').join(' ');
-    return { gridTemplateColumns: frs };
+    return { gridTemplateColumns: frs, gap: '0.75rem' }; 
   };
 
   useLayoutEffect(() => {
     const checkOverflow = () => {
       if (contentRef.current && containerRef.current) {
-        const isTooBig = contentRef.current.scrollHeight > (containerRef.current.clientHeight * 0.95);
+        const isTooBig = contentRef.current.scrollHeight > (containerRef.current.clientHeight * 0.98);
         onOverflow(isTooBig);
       }
     };
@@ -193,38 +195,70 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
             </svg>
           </div>
           <p className="mt-16 font-cinzel text-[10px] md:text-xs text-gray-500 tracking-[0.5em] uppercase opacity-30 animate-pulse">
-            Select a book from the sidebar to begin
+            Select a book to begin
           </p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div ref={containerRef} onClick={handleNav} className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none">
-      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-10">
-        <div ref={contentRef} className="w-full max-w-[98vw] animate-fadeIn transition-all duration-300">
-          <div className="text-center mb-8 opacity-30">
-            <span className="text-[9px] md:text-xs tracking-[0.6em] gold-text uppercase font-cinzel">
-              {safeSlide.sectionTitle}
-            </span>
-          </div>
+  // --- RENDER TITLE SLIDE (MULTI-LINE & SCRIPT AWARE) ---
+  if (safeSlide.type === 'title') {
+    // Split by explicit delimiters, then further split where English meets Arabic/Coptic
+    const titleParts = safeSlide.sectionTitle
+      .split(/[/|]|\n/)
+      .flatMap(p => {
+        // Regex splits boundary between Latin (a-zA-Z) and Non-Latin scripts (Arabic, Coptic)
+        return p.split(/(?<=[a-zA-Z0-9.,!?;:])\s+(?=[\u0600-\u06FF\u2C80-\u2CFF\u0370-\u03FF])|(?<=[\u0600-\u06FF\u2C80-\u2CFF\u0370-\u03FF])\s+(?=[a-zA-Z0-9.,!?;:])/);
+      })
+      .map(p => p.trim())
+      .filter(Boolean);
 
-          <div className="space-y-10 md:space-y-14">
+    return (
+      <div onClick={handleNav} className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none items-center justify-center p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#c5a05908_0%,_transparent_70%)]" />
+        <div className="max-w-5xl text-center animate-fadeIn flex flex-col gap-6 md:gap-8">
+          <div className="w-24 h-[1px] bg-[#c5a059] mx-auto opacity-30" />
+          {titleParts.map((part, i) => {
+            const isArabic = /[\u0600-\u06FF]/.test(part);
+            const isCoptic = /[\u2C80-\u2CFF\u0370-\u03FF]/.test(part);
+            return (
+              <h2 key={i} 
+                  className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.2em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
+                  dir={isArabic ? 'rtl' : 'ltr'}>
+                {part}
+              </h2>
+            );
+          })}
+          <div className="w-24 h-[1px] bg-[#c5a059] mx-auto opacity-30" />
+        </div>
+        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 opacity-20 font-cinzel text-[10px] tracking-[0.8em] gold-text uppercase animate-pulse">
+          Click to proceed
+        </div>
+      </div>
+    );
+  }
+
+  // --- RENDER CONTENT SLIDE ---
+  return (
+    <div ref={containerRef} onClick={handleNav} className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none pt-2 px-2 md:pt-4 md:px-4">
+      <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
+        <div ref={contentRef} className="w-full max-w-full animate-fadeIn transition-all duration-300">
+          <div className="space-y-6 md:space-y-10">
             {Array.from({ 
-              length: (Object.values(safeSlide.content) as (string[] | undefined)[]).reduce((max: number, arr) => Math.max(max, arr?.length || 0), 0)
+              length: (Object.values(safeSlide.content!) as (string[] | undefined)[]).reduce((max: number, arr) => Math.max(max, arr?.length || 0), 0)
             }).map((_, pIdx) => (
-              <div key={`p-row-${pIdx}`} className="space-y-4 md:space-y-6">
+              <div key={`p-row-${pIdx}`} className="space-y-2">
                 {activePrimary.length > 0 && (
-                  <div className="grid gap-8 md:gap-16 w-full items-start" style={getGridStyle(activePrimary)}>
+                  <div className="grid w-full items-start" style={getGridStyle(activePrimary)}>
                     {activePrimary.map(lang => {
-                      const text = safeSlide.content[lang]?.[pIdx];
+                      const text = safeSlide.content![lang]?.[pIdx];
                       const isAr = lang === Language.ARABIC;
                       const isEn = lang === Language.ENGLISH;
                       const isCop = lang === Language.COPTIC;
                       return text ? (
                         <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                          <div className={`leading-[1.45] text-gray-100 transition-all ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
+                          <div className={`leading-[1.4] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
                                style={{ fontSize: `${getScaledFontSize(lang, settings.fontSize)}px` }}>
                             {text}
                           </div>
@@ -235,15 +269,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
                 )}
 
                 {activeSecondary.length > 0 && (
-                  <div className="grid gap-8 md:gap-16 w-full items-start" style={getGridStyle(activeSecondary)}>
+                  <div className="grid w-full items-start" style={getGridStyle(activeSecondary)}>
                     {activeSecondary.map(lang => {
-                      const text = safeSlide.content[lang]?.[pIdx];
+                      const text = safeSlide.content![lang]?.[pIdx];
                       const isAr = lang === Language.TRANSLITERATED_ARABIC;
                       const isEn = lang === Language.TRANSLITERATED_ENGLISH;
                       return text ? (
                         <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                          <div className={`leading-snug gold-text opacity-50 transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
-                               style={{ fontSize: `${getScaledFontSize(lang, settings.fontSize)}px` }}>
+                          <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
+                               style={{ 
+                                 fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
+                                 color: '#f1dca7' // Lighter yellow color
+                               }}>
                             {text}
                           </div>
                         </div>
@@ -257,11 +294,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
         </div>
       </div>
 
-      <div className="fixed bottom-6 right-6 z-[80] pointer-events-none">
-        <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/5 flex items-center gap-2">
-          <span className="font-cinzel text-[9px] text-gray-500 tracking-widest uppercase">
-            {safeSlide.slideIndex} / {safeSlide.totalSlidesInSection}
-          </span>
+      {/* MATCHING SLIDE INDICATOR (BOTTOM RIGHT) - HARMONIZED WITH CONTROLS */}
+      <div className="fixed bottom-4 right-4 z-[80] pointer-events-none">
+        <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl pointer-events-auto flex items-center justify-center min-w-[6rem] h-[72px]">
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] font-cinzel text-gray-600 uppercase tracking-tighter">Slide</span>
+            <span className="text-lg font-cinzel gold-text font-bold leading-none">
+              {safeSlide.slideIndex} <span className="opacity-20 mx-1 text-sm">/</span> {safeSlide.totalSlidesInSection}
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
 import { Reader } from './components/Reader';
 import { Language, LibraryItem, AppSettings } from './types';
 import { ContentService } from './services/contentService';
-import { Database, Type, FileText, GripVertical, GripHorizontal, RefreshCw, Link as LinkIcon, AlertTriangle } from 'lucide-react';
+import { Database, Type, FileText, GripVertical, GripHorizontal, RefreshCw, Link as LinkIcon, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 
 const App: React.FC = () => {
   const [library, setLibrary] = useState<LibraryItem[]>([]);
@@ -230,23 +229,6 @@ const App: React.FC = () => {
               </div>
             )}
             
-            <div className="flex items-center bg-white/5 rounded-lg px-1 border border-white/10">
-              <button 
-                onClick={() => setSettings(s => ({...s, fontSize: Math.max(12, s.fontSize - 2)}))} 
-                className="p-2 text-gray-400 hover:text-white transition-colors"
-              >
-                <Type size={14} />
-              </button>
-              <button 
-                onClick={() => setSettings(s => ({...s, fontSize: Math.min(60, s.fontSize + 2)}))} 
-                disabled={isOverflowing}
-                className={`p-2 transition-all ${isOverflowing ? 'opacity-20 cursor-not-allowed text-gray-700' : 'text-gray-400 hover:text-white'}`}
-                title={isOverflowing ? "Text overflow detected" : "Increase font size"}
-              >
-                <Type size={18} />
-              </button>
-            </div>
-
             <button onClick={() => setIsEditorOpen(true)} className="p-2 text-gray-400 hover:gold-text" title="Open Database"><Database size={20} /></button>
           </div>
         </div>
@@ -260,6 +242,29 @@ const App: React.FC = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* FLOATING FONT SIZE CONTROLS (BOTTOM LEFT) */}
+      <div className="fixed bottom-4 left-4 z-[80] flex items-center space-x-3 pointer-events-none">
+        <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl pointer-events-auto flex items-center space-x-3">
+          <button 
+            onClick={() => setSettings(s => ({...s, fontSize: Math.max(12, s.fontSize - 2)}))} 
+            className="p-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+          >
+            <ChevronDown size={20} />
+          </button>
+          <div className="flex flex-col items-center min-w-[3rem]">
+            <span className="text-[10px] font-cinzel text-gray-600 uppercase tracking-tighter">Size</span>
+            <span className="text-lg font-cinzel gold-text font-bold leading-none">{settings.fontSize}</span>
+          </div>
+          <button 
+            onClick={() => setSettings(s => ({...s, fontSize: Math.min(72, s.fontSize + 2)}))} 
+            disabled={isOverflowing}
+            className={`p-3 rounded-xl transition-all ${isOverflowing ? 'opacity-20 cursor-not-allowed text-gray-800' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+          >
+            <ChevronUp size={20} />
+          </button>
+        </div>
+      </div>
 
       {/* EDITOR MODAL */}
       <AnimatePresence>
