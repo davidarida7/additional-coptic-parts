@@ -1,10 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
 import { Reader } from './components/Reader';
 import { Language, LibraryItem, AppSettings } from './types';
 import { ContentService } from './services/contentService';
-import { Database, Type, FileText, GripVertical, GripHorizontal, RefreshCw, Link as LinkIcon, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { Database, FileText, GripVertical, GripHorizontal, RefreshCw, Link as LinkIcon, AlertTriangle, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
+
+const DEFAULT_DOC_ID = '1xPk-NpTnWxihZ0ZMLkXhvFDcE_HmjnfTU2y6cZXtl1c';
+
+interface SearchResult {
+  bookId: string;
+  sectionId: string;
+  partIndex: number;
+  bookTitle: string;
+  sectionTitle: string;
+  textSnippet: string;
+  language: Language;
+}
 
 const App: React.FC = () => {
   const [library, setLibrary] = useState<LibraryItem[]>([]);
@@ -12,11 +24,17 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<string>('');
   const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
+  const [targetPartIndex, setTargetPartIndex] = useState<number | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editorContent, setEditorContent] = useState('');
   const [googleDocId, setGoogleDocId] = useState('');
   const [isOverflowing, setIsOverflowing] = useState(false);
   
+  // Global Search State
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const [settings, setSettings] = useState<AppSettings>({
     fontSize: 24,
     languages: [
@@ -44,7 +62,7 @@ const App: React.FC = () => {
       setEditorContent(content);
       return true;
     } catch (err) {
-      alert("Failed to sync from Google Doc. Please check the ID and ensure the document is shared as 'Anyone with the link can view'.");
+      console.error(err);
       return false;
     } finally {
       setIsSyncing(false);
@@ -53,7 +71,11 @@ const App: React.FC = () => {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const storedDocId = ContentService.getGoogleDocId();
+    let storedDocId = ContentService.getGoogleDocId();
+    
+    if (!storedDocId) {
+      storedDocId = DEFAULT_DOC_ID;
+    }
     setGoogleDocId(storedDocId);
 
     if (storedDocId) {
@@ -110,6 +132,44 @@ const App: React.FC = () => {
     return null;
   };
 
+  const globalSearchResults = useMemo(() => {
+    if (!globalSearchQuery.trim() || globalSearchQuery.length < 2) return [];
+    
+    const results: SearchResult[] = [];
+    const query = globalSearchQuery.toLowerCase();
+
+    const searchInItems = (items: LibraryItem[]) => {
+      items.forEach(item => {
+        if (item.type === 'book' && item.sections) {
+          item.sections.forEach(sec => {
+            sec.parts.forEach((part, partIdx) => {
+              Object.entries(part.content).forEach(([lang, stanzas]) => {
+                if (!stanzas) return;
+                stanzas.forEach(stanza => {
+                  if (stanza.toLowerCase().includes(query)) {
+                    results.push({
+                      bookId: item.id,
+                      sectionId: sec.id,
+                      partIndex: partIdx,
+                      bookTitle: item.title,
+                      sectionTitle: sec.title,
+                      textSnippet: stanza,
+                      language: lang as Language
+                    });
+                  }
+                });
+              });
+            });
+          });
+        }
+        if (item.children) searchInItems(item.children);
+      });
+    };
+
+    searchInItems(library);
+    return results.slice(0, 50);
+  }, [globalSearchQuery, library]);
+
   const selectedBook = findBook(library, selectedBookId);
 
   if (loading) return (
@@ -125,12 +185,15 @@ const App: React.FC = () => {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black text-white selection:bg-[#c5a059] selection:text-black">
       
-      {/* BACKGROUND READER */}
       <Reader 
         book={selectedBook} 
         settings={settings} 
         targetSectionId={targetSectionId} 
-        onTargetReached={() => setTargetSectionId(null)}
+        targetPartIndex={targetPartIndex}
+        onTargetReached={() => {
+          setTargetSectionId(null);
+          setTargetPartIndex(null);
+        }}
         onOverflow={setIsOverflowing}
       />
 
@@ -143,7 +206,6 @@ const App: React.FC = () => {
         onDragEnd={(_, info) => {
           const shouldOpen = info.velocity.x > 20 || info.offset.x > 100;
           const shouldClose = info.velocity.x < -20 || info.offset.x < -100;
-          
           if (shouldOpen) setSidebarOpen(true);
           else if (shouldClose) setSidebarOpen(false);
         }}
@@ -155,17 +217,13 @@ const App: React.FC = () => {
           <Sidebar 
             library={library} 
             selectedBookId={selectedBookId} 
-            onSelectBook={(id) => { setSelectedBookId(id); setTargetSectionId(null); setSidebarOpen(false); }}
-            onSelectSection={(bid, sid) => { setSelectedBookId(bid); setTargetSectionId(sid); setSidebarOpen(false); }}
+            onSelectBook={(id) => { setSelectedBookId(id); setTargetSectionId(null); setTargetPartIndex(null); setSidebarOpen(false); }}
+            onSelectSection={(bid, sid) => { setSelectedBookId(bid); setTargetSectionId(sid); setTargetPartIndex(null); setSidebarOpen(false); }}
             isOpen={true}
             onToggle={() => setSidebarOpen(false)}
           />
         </div>
-        
-        <div 
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="w-10 h-full flex items-center justify-center cursor-pointer group bg-transparent"
-        >
+        <div onClick={() => setSidebarOpen(!sidebarOpen)} className="w-10 h-full flex items-center justify-center cursor-pointer group bg-transparent">
           <div className="w-1 h-16 bg-[#c5a059]/20 group-hover:bg-[#c5a059]/60 rounded-full transition-all flex flex-col items-center justify-center">
             <GripVertical size={12} className="text-[#c5a059] opacity-0 group-hover:opacity-100" />
           </div>
@@ -181,7 +239,6 @@ const App: React.FC = () => {
         onDragEnd={(_, info) => {
           const shouldOpen = info.velocity.y > 20 || info.offset.y > 40;
           const shouldClose = info.velocity.y < -20 || info.offset.y < -40;
-          
           if (shouldOpen) setHeaderOpen(true);
           else if (shouldClose) setHeaderOpen(false);
         }}
@@ -191,8 +248,8 @@ const App: React.FC = () => {
       >
         <div className="w-full bg-[#0d0d0d]/95 backdrop-blur-xl border-b border-white/10 shadow-xl flex items-center justify-between px-6" style={{ height: headerHeight }}>
           <div className="flex items-center space-x-6">
-            <h1 className="font-cinzel gold-text tracking-widest font-bold text-sm hidden md:block">ADDITIONAL COPTIC PARTS</h1>
-            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+            <h1 className="font-cinzel gold-text tracking-widest font-bold text-sm hidden lg:block whitespace-nowrap">ADDITIONAL COPTIC PARTS</h1>
+            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10 shrink-0">
               {[Language.ENGLISH, Language.COPTIC, Language.ARABIC, Language.TRANSLITERATED_ENGLISH, Language.TRANSLITERATED_ARABIC].map(lang => (
                 <button
                   key={lang}
@@ -207,84 +264,133 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 shrink-0">
             <AnimatePresence>
               {isOverflowing && (
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex items-center text-[8px] text-red-500 font-bold tracking-widest uppercase mr-2"
-                >
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex items-center text-[8px] text-red-500 font-bold tracking-widest uppercase mr-2">
                   <AlertTriangle size={12} className="mr-1" />
-                  Max Size Reached
+                  Max Reached
                 </motion.div>
               )}
             </AnimatePresence>
 
             {isSyncing && (
-              <div className="flex items-center text-[10px] gold-text font-cinzel tracking-widest animate-pulse mr-4">
+              <div className="flex items-center text-[10px] gold-text font-cinzel tracking-widest animate-pulse mr-2">
                 <RefreshCw size={12} className="animate-spin mr-2" />
                 SYNCING...
               </div>
             )}
+
+            {/* COLLAPSIBLE GLOBAL SEARCH */}
+            <div className="relative flex items-center">
+              <motion.div 
+                initial={false}
+                animate={{ width: isSearchExpanded ? (window.innerWidth < 768 ? '180px' : '320px') : '40px' }}
+                className="bg-white/5 border border-white/10 rounded-xl overflow-hidden flex items-center relative"
+              >
+                <button 
+                  onClick={() => {
+                    if (!isSearchExpanded) {
+                      setIsSearchExpanded(true);
+                      setTimeout(() => searchInputRef.current?.focus(), 100);
+                    } else if (!globalSearchQuery) {
+                      setIsSearchExpanded(false);
+                    }
+                  }}
+                  className={`p-2 transition-colors ${isSearchExpanded ? 'text-[#c5a059]' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Search size={20} />
+                </button>
+                
+                <input 
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search prayers..."
+                  value={globalSearchQuery}
+                  onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                  onBlur={() => { if (!globalSearchQuery) setIsSearchExpanded(false); }}
+                  className={`bg-transparent border-none outline-none text-xs font-cinzel tracking-widest text-gray-300 w-full pr-10 transition-opacity duration-300 ${isSearchExpanded ? 'opacity-100' : 'opacity-0'}`}
+                />
+
+                {globalSearchQuery && (
+                  <button 
+                    onClick={() => { setGlobalSearchQuery(''); searchInputRef.current?.focus(); }}
+                    className="absolute right-2 text-gray-500 hover:text-white"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </motion.div>
+
+              {/* GLOBAL SEARCH RESULTS DROPDOWN */}
+              <AnimatePresence>
+                {isSearchExpanded && globalSearchResults.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full right-0 mt-3 w-80 bg-[#121212] border border-white/10 rounded-2xl shadow-2xl max-h-[60vh] overflow-y-auto z-[80] p-2"
+                  >
+                    {globalSearchResults.map((result, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setSelectedBookId(result.bookId);
+                          setTargetSectionId(result.sectionId);
+                          setTargetPartIndex(result.partIndex);
+                          setGlobalSearchQuery('');
+                          setIsSearchExpanded(false);
+                          setHeaderOpen(false);
+                        }}
+                        className="w-full text-left p-4 hover:bg-white/5 rounded-xl border-b border-white/5 last:border-0 group"
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-[10px] font-cinzel gold-text font-bold tracking-widest uppercase truncate">{result.bookTitle}</span>
+                          <span className="text-[9px] text-gray-600 font-bold uppercase ml-2 px-1 bg-white/5 rounded">{result.language}</span>
+                        </div>
+                        <div className="text-[11px] font-cinzel text-gray-400 uppercase tracking-wider mb-2 opacity-60">{result.sectionTitle}</div>
+                        <div className={`text-xs text-gray-300 line-clamp-2 leading-relaxed ${result.language === Language.ARABIC ? 'font-arabic text-right' : result.language === Language.COPTIC ? 'font-coptic' : 'font-eb-garamond'}`} dir={result.language === Language.ARABIC ? 'rtl' : 'ltr'}>
+                          {result.textSnippet}
+                        </div>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             
-            <button onClick={() => setIsEditorOpen(true)} className="p-2 text-gray-400 hover:gold-text" title="Open Database"><Database size={20} /></button>
+            <button onClick={() => setIsEditorOpen(true)} className="p-2 text-gray-400 hover:gold-text" title="Open Database">
+              <Database size={20} />
+            </button>
           </div>
         </div>
 
-        <div 
-          onClick={() => setHeaderOpen(!headerOpen)}
-          className="w-24 h-6 flex items-center justify-center cursor-pointer group bg-transparent"
-        >
+        <div onClick={() => setHeaderOpen(!headerOpen)} className="w-24 h-6 flex items-center justify-center cursor-pointer group bg-transparent">
           <div className="h-1 w-12 bg-[#c5a059]/20 group-hover:bg-[#c5a059]/60 rounded-full transition-all flex items-center justify-center">
              <GripHorizontal size={12} className="text-[#c5a059] opacity-0 group-hover:opacity-100" />
           </div>
         </div>
       </motion.div>
 
-      {/* FLOATING FONT SIZE CONTROLS (BOTTOM LEFT) */}
+      {/* FONT SIZE CONTROLS */}
       <div className="fixed bottom-4 left-4 z-[80] flex items-center space-x-3 pointer-events-none">
         <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl pointer-events-auto flex items-center space-x-3">
-          <button 
-            onClick={() => setSettings(s => ({...s, fontSize: Math.max(12, s.fontSize - 2)}))} 
-            className="p-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"
-          >
-            <ChevronDown size={20} />
-          </button>
+          <button onClick={() => setSettings(s => ({...s, fontSize: Math.max(12, s.fontSize - 2)}))} className="p-3 text-gray-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"><ChevronDown size={20} /></button>
           <div className="flex flex-col items-center min-w-[3rem]">
             <span className="text-[10px] font-cinzel text-gray-600 uppercase tracking-tighter">Size</span>
             <span className="text-lg font-cinzel gold-text font-bold leading-none">{settings.fontSize}</span>
           </div>
-          <button 
-            onClick={() => setSettings(s => ({...s, fontSize: Math.min(72, s.fontSize + 2)}))} 
-            disabled={isOverflowing}
-            className={`p-3 rounded-xl transition-all ${isOverflowing ? 'opacity-20 cursor-not-allowed text-gray-800' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-          >
-            <ChevronUp size={20} />
-          </button>
+          <button onClick={() => setSettings(s => ({...s, fontSize: Math.min(72, s.fontSize + 2)}))} disabled={isOverflowing} className={`p-3 rounded-xl transition-all ${isOverflowing ? 'opacity-20 cursor-not-allowed text-gray-800' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}><ChevronUp size={20} /></button>
         </div>
       </div>
 
       {/* EDITOR MODAL */}
       <AnimatePresence>
         {isEditorOpen && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-6 md:p-12 overflow-y-auto"
-          >
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-6 md:p-12 overflow-y-auto">
             <div className="w-full max-w-5xl mx-auto flex flex-col h-full">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
-                  <h2 className="text-2xl font-cinzel gold-text font-bold tracking-widest flex items-center uppercase">
-                    <FileText size={24} className="mr-3" />
-                    Content Editor
-                  </h2>
-                  <p className="text-xs text-gray-500 font-inter mt-1 tracking-wider uppercase">
-                    # Category, ## Book, ### Section. [EN], [COP], [AR], [TRAN-EN], [TRAN-AR] for content. "---" for slides.
-                  </p>
+                  <h2 className="text-2xl font-cinzel gold-text font-bold tracking-widest flex items-center uppercase"><FileText size={24} className="mr-3" /> Content Editor</h2>
+                  <p className="text-xs text-gray-500 font-inter mt-1 tracking-wider uppercase"># Category, ## Book, ### Section. [EN], [COP], [AR], [TRAN-EN], [TRAN-AR] for content. "---" for slides.</p>
                 </div>
                 <div className="flex space-x-4 w-full md:w-auto">
                   <button onClick={() => setIsEditorOpen(false)} className="flex-1 md:flex-none px-8 py-3 border border-white/10 rounded-xl hover:bg-white/5 uppercase text-[10px] tracking-[0.2em] font-bold">Cancel</button>
@@ -292,45 +398,21 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* GOOGLE DOC SYNC BOX */}
               <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center gap-6">
                 <div className="flex-1 w-full">
                   <label className="text-[10px] font-cinzel gold-text tracking-widest uppercase mb-2 block">Link to Google Doc (Public View Only)</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500">
-                      <LinkIcon size={16} />
-                    </div>
-                    <input 
-                      type="text"
-                      placeholder="Enter Google Doc ID..."
-                      value={googleDocId}
-                      onChange={(e) => setGoogleDocId(e.target.value)}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm font-mono text-gray-300 focus:border-[#c5a059] outline-none transition-all"
-                    />
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500"><LinkIcon size={16} /></div>
+                    <input type="text" placeholder="Enter Google Doc ID..." value={googleDocId} onChange={(e) => setGoogleDocId(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm font-mono text-gray-300 focus:border-[#c5a059] outline-none transition-all" />
                   </div>
                 </div>
-                <button 
-                  disabled={!googleDocId || isSyncing}
-                  onClick={() => syncFromGoogleDoc(googleDocId)}
-                  className="w-full md:w-auto px-6 py-3 bg-white/5 border border-[#c5a059]/40 rounded-xl gold-text text-[10px] font-bold tracking-widest hover:bg-[#c5a059]/10 disabled:opacity-30 disabled:cursor-not-allowed uppercase flex items-center justify-center min-w-[140px]"
-                >
-                  {isSyncing ? (
-                    <RefreshCw size={14} className="animate-spin mr-2" />
-                  ) : (
-                    <RefreshCw size={14} className="mr-2" />
-                  )}
+                <button disabled={!googleDocId || isSyncing} onClick={() => syncFromGoogleDoc(googleDocId)} className="w-full md:w-auto px-6 py-3 bg-white/5 border border-[#c5a059]/40 rounded-xl gold-text text-[10px] font-bold tracking-widest hover:bg-[#c5a059]/10 disabled:opacity-30 disabled:cursor-not-allowed uppercase flex items-center justify-center min-w-[140px]">
+                  {isSyncing ? <RefreshCw size={14} className="animate-spin mr-2" /> : <RefreshCw size={14} className="mr-2" />}
                   {isSyncing ? 'Syncing...' : 'Sync Now'}
                 </button>
               </div>
 
-              <textarea 
-                value={editorContent}
-                onChange={(e) => setEditorContent(e.target.value)}
-                className="flex-1 bg-black/50 text-gray-300 font-mono p-8 rounded-2xl border border-white/10 resize-none focus:outline-none focus:border-[#c5a059] text-sm leading-relaxed shadow-inner"
-                spellCheck={false}
-                placeholder="# Category Name..."
-                disabled={isSyncing}
-              />
+              <textarea value={editorContent} onChange={(e) => setEditorContent(e.target.value)} className="flex-1 bg-black/50 text-gray-300 font-mono p-8 rounded-2xl border border-white/10 resize-none focus:outline-none focus:border-[#c5a059] text-sm leading-relaxed shadow-inner" spellCheck={false} placeholder="# Category Name..." disabled={isSyncing} />
             </div>
           </motion.div>
         )}
@@ -338,16 +420,9 @@ const App: React.FC = () => {
 
       <AnimatePresence>
         {(sidebarOpen || headerOpen) && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => { setSidebarOpen(false); setHeaderOpen(false); }}
-            className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-[2px] pointer-events-auto"
-          />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSidebarOpen(false); setHeaderOpen(false); setIsSearchExpanded(false); }} className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-[2px] pointer-events-auto" />
         )}
       </AnimatePresence>
-
     </div>
   );
 };

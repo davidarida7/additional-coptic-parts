@@ -5,6 +5,7 @@ interface ReaderProps {
   book: LibraryItem | null;
   settings: AppSettings;
   targetSectionId: string | null;
+  targetPartIndex: number | null;
   onTargetReached: () => void;
   onOverflow: (overflowing: boolean) => void;
 }
@@ -18,7 +19,7 @@ interface ComputedSlide {
   totalSlidesInSection: number;
 }
 
-export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId, onTargetReached, onOverflow }) => {
+export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId, targetPartIndex, onTargetReached, onOverflow }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -152,7 +153,21 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
     if (!book || allSlides.length === 0) return;
     const bookChanged = lastBookIdRef.current !== book.id;
     if (targetSectionId) {
-      const idx = allSlides.findIndex(s => s.sectionId === targetSectionId);
+      let idx = -1;
+      // If a specific part was requested (from search results)
+      if (targetPartIndex !== null) {
+        idx = allSlides.findIndex(s => 
+          s.sectionId === targetSectionId && 
+          s.type === 'content' && 
+          s.slideIndex === targetPartIndex + 1
+        );
+      }
+      
+      // Fallback to title slide if part not found or not specified
+      if (idx === -1) {
+        idx = allSlides.findIndex(s => s.sectionId === targetSectionId);
+      }
+
       if (idx !== -1) {
         setCurrentSlideIndex(idx);
         onTargetReached();
@@ -164,7 +179,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
       setCurrentSlideIndex(0);
       lastBookIdRef.current = book.id;
     }
-  }, [book?.id, targetSectionId, allSlides, onTargetReached]);
+  }, [book?.id, targetSectionId, targetPartIndex, allSlides, onTargetReached]);
 
   const handleNav = (e: React.MouseEvent) => {
     const { clientX, currentTarget } = e;
