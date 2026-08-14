@@ -501,7 +501,7 @@ export const Reader: React.FC<ReaderProps> = ({
   const getGridStyle = (langs: Language[]) => {
     if (langs.length <= 1 || !safeSlide) return { gridTemplateColumns: '1fr' };
     const frs = langs.map(l => currentColumnWidths[l] || '1fr').join(' ');
-    return { gridTemplateColumns: frs, gap: '1rem' }; 
+    return { gridTemplateColumns: frs }; 
   };
 
   useLayoutEffect(() => {
@@ -610,18 +610,22 @@ export const Reader: React.FC<ReaderProps> = ({
             const isArabic = /[\u0600-\u06FF]/.test(part);
             const isCoptic = /[\u2C80-\u2CFF\u0370-\u03FF]/.test(part);
             return (
-              <h2 key={i} 
-                  style={{
-                    fontFamily: isCoptic 
-                      ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
-                      : isArabic 
-                      ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
-                      : undefined
-                  }}
-                  className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.15em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
-                  dir={isArabic ? 'rtl' : 'ltr'}>
-                {part}
-              </h2>
+              <React.Fragment key={i}>
+                {i > 0 && (
+                  <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-[#c5a059]/40 to-transparent mx-auto my-1" />
+                )}
+                <h2 style={{
+                      fontFamily: isCoptic 
+                        ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
+                        : isArabic 
+                        ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
+                        : undefined
+                    }}
+                    className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.15em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
+                    dir={isArabic ? 'rtl' : 'ltr'}>
+                  {part}
+                </h2>
+              </React.Fragment>
             );
           })}
           <div className="w-24 h-[1px] bg-[#c5a059] mx-auto opacity-30" />
@@ -651,55 +655,71 @@ export const Reader: React.FC<ReaderProps> = ({
             {Array.from({ length: rowCount }).map((_, pIdx) => (
               <div key={`p-row-${pIdx}`} className="space-y-2">
                 {activePrimary.length > 0 && (
-                  <div className="grid w-full items-start" style={getGridStyle(activePrimary)}>
-                    {activePrimary.map(lang => {
+                  <div className="grid w-full items-stretch" style={getGridStyle(activePrimary)}>
+                    {activePrimary.map((lang, colIdx) => {
                       const text = safeSlide.content![lang]?.[pIdx];
                       const isAr = lang === Language.ARABIC;
                       const isEn = lang === Language.ENGLISH;
                       const isCop = lang === Language.COPTIC;
-                      return text ? (
-                        <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                          <div className={`leading-[1.35] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
-                               style={{ 
-                                 fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
-                                 fontFamily: isCop 
-                                   ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
-                                   : isAr 
-                                   ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
-                                   : isEn 
-                                   ? "'Times New Roman', Times, serif" 
-                                   : undefined
-                               }}>
-                            {text}
-                          </div>
+                      const isLast = colIdx === activePrimary.length - 1;
+                      return (
+                        <div 
+                          key={`${lang}-${pIdx}`} 
+                          className={`flex items-start ${colIdx > 0 ? 'pl-3 md:pl-5 border-l border-gray-100/40' : ''} ${!isLast ? 'pr-3 md:pr-5' : ''}`}
+                        >
+                          {text ? (
+                            <div className={`w-full ${isAr ? 'text-right' : 'text-left'}`} dir={isAr ? 'rtl' : 'ltr'}>
+                              <div className={`leading-[1.35] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
+                                   style={{ 
+                                     fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
+                                     fontFamily: isCop 
+                                       ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
+                                       : isAr 
+                                       ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
+                                       : isEn 
+                                       ? "'Times New Roman', Times, serif" 
+                                       : undefined
+                                   }}>
+                                {text}
+                              </div>
+                            </div>
+                          ) : <div className="w-full" />}
                         </div>
-                      ) : <div key={`${lang}-${pIdx}`} />;
+                      );
                     })}
                   </div>
                 )}
 
                 {activeSecondary.length > 0 && (
-                  <div className="grid w-full items-start" style={getGridStyle(activeSecondary)}>
-                    {activeSecondary.map(lang => {
+                  <div className="grid w-full items-stretch" style={getGridStyle(activeSecondary)}>
+                    {activeSecondary.map((lang, colIdx) => {
                       const text = safeSlide.content![lang]?.[pIdx];
                       const isAr = lang === Language.TRANSLITERATED_ARABIC;
                       const isEn = lang === Language.TRANSLITERATED_ENGLISH;
-                      return text ? (
-                        <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                          <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
-                               style={{ 
-                                 fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
-                                 fontFamily: isAr 
-                                   ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
-                                   : isEn 
-                                   ? "'Times New Roman', Times, serif" 
-                                   : undefined,
-                                 color: '#f1dca7'
-                                }}>
-                            {text}
-                          </div>
+                      const isLast = colIdx === activeSecondary.length - 1;
+                      return (
+                        <div 
+                          key={`${lang}-${pIdx}`} 
+                          className={`flex items-start ${colIdx > 0 ? 'pl-3 md:pl-5 border-l border-[#f1dca7]/40' : ''} ${!isLast ? 'pr-3 md:pr-5' : ''}`}
+                        >
+                          {text ? (
+                            <div className={`w-full ${isAr ? 'text-right' : 'text-left'}`} dir={isAr ? 'rtl' : 'ltr'}>
+                              <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
+                                   style={{ 
+                                     fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
+                                     fontFamily: isAr 
+                                       ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
+                                       : isEn 
+                                       ? "'Times New Roman', Times, serif" 
+                                       : undefined,
+                                     color: '#f1dca7'
+                                    }}>
+                                {text}
+                              </div>
+                            </div>
+                          ) : <div className="w-full" />}
                         </div>
-                      ) : <div key={`${lang}-${pIdx}`} />;
+                      );
                     })}
                   </div>
                 )}
