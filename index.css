@@ -40,7 +40,9 @@
 
 @font-face {
   font-family: 'Coptic';
-  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
+       url('/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
+       url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
   font-weight: 100 900;
@@ -50,7 +52,9 @@
 
 @font-face {
   font-family: 'Coptic';
-  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
+       url('/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
+       url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
   font-weight: normal;
@@ -60,7 +64,9 @@
 
 @font-face {
   font-family: 'Coptic';
-  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
+       url('/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
+       url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
   font-weight: bold;
@@ -70,7 +76,9 @@
 
 @font-face {
   font-family: 'ArabicTimes';
-  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRoman.woff') format('woff'),
+       url('/fonts/TimesNewRoman.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
        url('/fonts/TimesNewRoman.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7aRnpd8CGxBHqUp.ttf') format('truetype');
@@ -81,7 +89,9 @@
 
 @font-face {
   font-family: 'ArabicTimes';
-  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRoman.woff') format('woff'),
+       url('/fonts/TimesNewRoman.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
        url('/fonts/TimesNewRoman.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7aRnpd8CGxBHqUp.ttf') format('truetype');
@@ -92,7 +102,9 @@
 
 @font-face {
   font-family: 'ArabicTimes';
-  src: url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman%20Bold.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7acnpd8CGxBHp2VkZY4.ttf') format('truetype');
@@ -103,7 +115,9 @@
 
 @font-face {
   font-family: 'TimesArabic';
-  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRoman.woff') format('woff'),
+       url('/fonts/TimesNewRoman.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
        url('/fonts/TimesNewRoman.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7aRnpd8CGxBHqUp.ttf') format('truetype');
@@ -114,7 +128,9 @@
 
 @font-face {
   font-family: 'TimesArabic';
-  src: url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman%20Bold.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7acnpd8CGxBHp2VkZY4.ttf') format('truetype');
@@ -125,7 +141,9 @@
 
 @font-face {
   font-family: 'Times New Roman';
-  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRoman.woff') format('woff'),
+       url('/fonts/TimesNewRoman.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
        url('/fonts/TimesNewRoman.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7aRnpd8CGxBHqUp.ttf') format('truetype');
@@ -136,7 +154,9 @@
 
 @font-face {
   font-family: 'Times New Roman';
-  src: url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman%20Bold.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7acnpd8CGxBHp2VkZY4.ttf') format('truetype');
@@ -147,7 +167,9 @@
 
 @font-face {
   font-family: 'Times';
-  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRoman.woff') format('woff'),
+       url('/fonts/TimesNewRoman.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
        url('/fonts/TimesNewRoman.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7aRnpd8CGxBHqUp.ttf') format('truetype');
@@ -158,7 +180,9 @@
 
 @font-face {
   font-family: 'Times';
-  src: url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
+  src: url('./src/assets/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('/fonts/TimesNewRomanBold.woff') format('woff'),
+       url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('/fonts/TimesNewRomanBold.ttf') format('truetype'),
        url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman%20Bold.ttf') format('truetype'),
        url('https://fonts.gstatic.com/s/amiri/v30/J7acnpd8CGxBHp2VkZY4.ttf') format('truetype');
