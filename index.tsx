@@ -3,7 +3,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import './src/embedded-fonts.css';
 
 // Actively trigger font loading for mobile browsers
 if (typeof document !== 'undefined' && 'fonts' in document) {

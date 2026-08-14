@@ -391,64 +391,6 @@ async function main() {
       console.log(`[ensure-font] Generated uncollided ArabicTimesBold font at ${boldDest} and ${boldWoffDest}`);
     }
   }
-
-  // Generate embedded base64 CSS file
-  try {
-    const arabicRegBuf = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'ArabicTimes.ttf'));
-    const arabicBoldBuf = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'ArabicTimesBold.ttf'));
-    const copticBuf = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'FreeSerifAvvaShenouda.ttf'));
-
-    const b64ArabicReg = arabicRegBuf.toString('base64');
-    const b64ArabicBold = arabicBoldBuf.toString('base64');
-    const b64Coptic = copticBuf.toString('base64');
-
-    const embeddedCss = `
-/* Embedded uncollided fonts for 100% mobile compatibility */
-@font-face {
-  font-family: 'ArabicTimes';
-  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicReg}') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'ArabicTimes';
-  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicBold}') format('truetype');
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'TimesArabic';
-  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicReg}') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'TimesArabic';
-  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicBold}') format('truetype');
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'FreeSerifAvvaShenouda';
-  src: url('data:font/truetype;charset=utf-8;base64,${b64Coptic}') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-`;
-    fs.writeFileSync(path.join(process.cwd(), 'src', 'embedded-fonts.css'), embeddedCss);
-    console.log('[ensure-font] Generated embedded-fonts.css');
-  } catch (err) {
-    console.error('[ensure-font] Could not generate embedded-fonts.css:', err.message);
-  }
 }
 
 main().catch((err) => {
