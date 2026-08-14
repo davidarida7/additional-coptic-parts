@@ -615,7 +615,7 @@ export const Reader: React.FC<ReaderProps> = ({
                     fontFamily: isCoptic 
                       ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
                       : isArabic 
-                      ? "'Times New Roman', Times, 'Amiri', serif" 
+                      ? "'Times New Roman', 'Times', 'Amiri', serif" 
                       : undefined
                   }}
                   className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.15em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
@@ -662,7 +662,13 @@ export const Reader: React.FC<ReaderProps> = ({
                           <div className={`leading-[1.35] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
                                style={{ 
                                  fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
-                                 fontFamily: isCop ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" : (isEn || isAr) ? "'Times New Roman', Times, serif" : undefined
+                                 fontFamily: isCop 
+                                   ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
+                                   : isAr 
+                                   ? "'Times New Roman', 'Times', 'Amiri', serif"
+                                   : isEn 
+                                   ? "'Times New Roman', 'Times', serif" 
+                                   : undefined
                                }}>
                             {text}
                           </div>
@@ -683,7 +689,11 @@ export const Reader: React.FC<ReaderProps> = ({
                           <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
                                style={{ 
                                  fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
-                                 fontFamily: (isEn || isAr) ? "'Times New Roman', Times, serif" : undefined,
+                                 fontFamily: isAr 
+                                   ? "'Times New Roman', 'Times', 'Amiri', serif" 
+                                   : isEn 
+                                   ? "'Times New Roman', 'Times', serif" 
+                                   : undefined,
                                  color: '#f1dca7'
                                 }}>
                             {text}

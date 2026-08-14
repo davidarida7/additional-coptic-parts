@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Amiri:wght@400;700&family=Inter:wght@300;400;600&family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
     <link rel="preload" href="/fonts/FreeSerifAvvaShenouda.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="/fonts/TimesNewRoman.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="/fonts/TimesNewRomanBold.ttf" as="font" type="font/ttf" crossorigin>
     <style>
         @font-face {
             font-family: 'FreeSerifAvvaShenouda';
@@ -66,6 +68,34 @@
             font-style: normal;
             font-display: swap;
         }
+        @font-face {
+            font-family: 'Times New Roman';
+            src: url('/fonts/TimesNewRoman.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Times New Roman';
+            src: url('/fonts/TimesNewRomanBold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Times';
+            src: url('/fonts/TimesNewRoman.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Times';
+            src: url('/fonts/TimesNewRomanBold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }
         body {
             background-color: #000;
             color: #e5e7eb;
@@ -76,10 +106,10 @@
         .font-coptic { 
             font-family: 'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif !important; 
         }
-        .font-arabic { font-family: 'Times New Roman', Times, 'Amiri', serif !important; }
-        .font-cinzel { font-family: 'Cinzel', serif; }
-        .font-eb-garamond { font-family: 'Times New Roman', Times, 'EB Garamond', serif; }
-        .font-times, .font-english { font-family: 'Times New Roman', Times, serif !important; }
+        .font-arabic { font-family: 'Times New Roman', 'Times', 'Amiri', serif !important; }
+        .font-cinzel { font-family: 'Cinzel', serif !important; }
+        .font-eb-garamond { font-family: 'Times New Roman', 'Times', 'EB Garamond', serif !important; }
+        .font-times, .font-english { font-family: 'Times New Roman', 'Times', serif !important; }
         
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #000; }
