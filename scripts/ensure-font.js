@@ -64,10 +64,23 @@ async function main() {
       let isValid = false;
       if (fs.existsSync(target)) {
         const stats = fs.statSync(target);
-        if (stats.size === font.size || stats.size > 500000) {
-          isValid = true;
-        } else {
-          console.warn(`[ensure-font] Font file at ${target} has incorrect size (${stats.size} vs expected ${font.size}), refreshing...`);
+        if (stats.size === font.size) {
+          try {
+            const fd = fs.openSync(target, 'r');
+            const buffer = Buffer.alloc(4);
+            fs.readSync(fd, buffer, 0, 4, 0);
+            fs.closeSync(fd);
+            const magic = buffer.toString('hex');
+            if (magic === '00010000' || magic === '4f54544f') {
+              isValid = true;
+            }
+          } catch (e) {
+            isValid = false;
+          }
+        }
+        if (!isValid) {
+          console.warn(`[ensure-font] Font file at ${target} has incorrect size/header (${stats.size} vs expected ${font.size}), replacing with fresh binary...`);
+          try { fs.unlinkSync(target); } catch (e) {}
         }
       }
 
