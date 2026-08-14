@@ -1,7 +1,25 @@
 {
-  "buildCommand": "vite build",
+  "buildCommand": "node scripts/ensure-font.js && vite build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "headers": [
+    {
+      "source": "/fonts/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "Content-Type", "value": "font/ttf" }
+      ]
+    },
+    {
+      "source": "/assets/(.*\\.ttf)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "Content-Type", "value": "font/ttf" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
