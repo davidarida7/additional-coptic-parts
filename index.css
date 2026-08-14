@@ -19,7 +19,7 @@
 }
 
 .font-coptic {
-  font-family: 'FreeSerifAvvaShenouda', 'Coptic', serif !important;
+  font-family: 'FreeSerifAvvaShenouda', 'Coptic', 'Noto Serif Coptic', 'Noto Sans Coptic', serif !important;
 }
 
 .font-arabic {
