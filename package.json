@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.4",
+    "framer-motion": "^11.0.0",
     "lucide-react": "^0.563.0",
+    "opentype.js": "^2.0.0",
     "react": "^19.2.4",
-    "framer-motion": "^11.0.0"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

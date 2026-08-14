@@ -69,6 +69,138 @@ function ttfToWoff(ttfBuf) {
   return Buffer.concat([headerBuf, ...dirBuffers, ...dataBuffers]);
 }
 
+function rebuildFontNameTable(fontBuf, familyName, subfamilyName, postscriptName) {
+  const numTables = fontBuf.readUInt16BE(4);
+  const tables = [];
+  let nameTableIndex = -1;
+
+  for (let i = 0; i < numTables; i++) {
+    const recOffset = 12 + i * 16;
+    const tag = fontBuf.slice(recOffset, recOffset + 4).toString('ascii');
+    const checksum = fontBuf.readUInt32BE(recOffset + 4);
+    const offset = fontBuf.readUInt32BE(recOffset + 8);
+    const length = fontBuf.readUInt32BE(recOffset + 12);
+    const data = fontBuf.slice(offset, offset + length);
+    const dataCopy = Buffer.from(data);
+    tables.push({ tag, checksum, offset, length, data: dataCopy });
+    if (tag === 'name') nameTableIndex = i;
+    if (tag === 'OS/2') {
+      dataCopy.writeUInt16BE(0, 8); // remove fsType restrictions
+    }
+  }
+
+  const fullName = subfamilyName === 'Regular' ? familyName : familyName + ' ' + subfamilyName;
+  const uniqueID = familyName + ':' + subfamilyName;
+
+  const records = [
+    { pID: 1, eID: 0, lID: 0, nID: 1, str: familyName, isUtf16: false },
+    { pID: 1, eID: 0, lID: 0, nID: 2, str: subfamilyName, isUtf16: false },
+    { pID: 1, eID: 0, lID: 0, nID: 3, str: uniqueID, isUtf16: false },
+    { pID: 1, eID: 0, lID: 0, nID: 4, str: fullName, isUtf16: false },
+    { pID: 1, eID: 0, lID: 0, nID: 6, str: postscriptName, isUtf16: false },
+    { pID: 3, eID: 1, lID: 1033, nID: 1, str: familyName, isUtf16: true },
+    { pID: 3, eID: 1, lID: 1033, nID: 2, str: subfamilyName, isUtf16: true },
+    { pID: 3, eID: 1, lID: 1033, nID: 3, str: uniqueID, isUtf16: true },
+    { pID: 3, eID: 1, lID: 1033, nID: 4, str: fullName, isUtf16: true },
+    { pID: 3, eID: 1, lID: 1033, nID: 6, str: postscriptName, isUtf16: true },
+    { pID: 0, eID: 3, lID: 0, nID: 1, str: familyName, isUtf16: true },
+    { pID: 0, eID: 3, lID: 0, nID: 2, str: subfamilyName, isUtf16: true },
+    { pID: 0, eID: 3, lID: 0, nID: 3, str: uniqueID, isUtf16: true },
+    { pID: 0, eID: 3, lID: 0, nID: 4, str: fullName, isUtf16: true },
+    { pID: 0, eID: 3, lID: 0, nID: 6, str: postscriptName, isUtf16: true },
+  ];
+
+  let stringPool = Buffer.alloc(0);
+  const encodedRecords = [];
+
+  for (const r of records) {
+    let strBuf;
+    if (r.isUtf16) {
+      strBuf = Buffer.alloc(r.str.length * 2);
+      for (let i = 0; i < r.str.length; i++) {
+        strBuf.writeUInt16BE(r.str.charCodeAt(i), i * 2);
+      }
+    } else {
+      strBuf = Buffer.from(r.str, 'ascii');
+    }
+    const offset = stringPool.length;
+    stringPool = Buffer.concat([stringPool, strBuf]);
+    encodedRecords.push({
+      pID: r.pID,
+      eID: r.eID,
+      lID: r.lID,
+      nID: r.nID,
+      length: strBuf.length,
+      offset: offset,
+    });
+  }
+
+  const nameHeaderSize = 6 + encodedRecords.length * 12;
+  const nameTableBuf = Buffer.alloc(nameHeaderSize + stringPool.length);
+  nameTableBuf.writeUInt16BE(0, 0);
+  nameTableBuf.writeUInt16BE(encodedRecords.length, 2);
+  nameTableBuf.writeUInt16BE(nameHeaderSize, 4);
+
+  for (let i = 0; i < encodedRecords.length; i++) {
+    const rec = encodedRecords[i];
+    const off = 6 + i * 12;
+    nameTableBuf.writeUInt16BE(rec.pID, off);
+    nameTableBuf.writeUInt16BE(rec.eID, off + 2);
+    nameTableBuf.writeUInt16BE(rec.lID, off + 4);
+    nameTableBuf.writeUInt16BE(rec.nID, off + 6);
+    nameTableBuf.writeUInt16BE(rec.length, off + 8);
+    nameTableBuf.writeUInt16BE(rec.offset, off + 10);
+  }
+  stringPool.copy(nameTableBuf, nameHeaderSize);
+
+  tables[nameTableIndex].data = nameTableBuf;
+
+  // Sort tables alphabetically
+  tables.sort((a, b) => a.tag.localeCompare(b.tag));
+
+  let currentOffset = 12 + tables.length * 16;
+  for (const t of tables) {
+    t.offset = currentOffset;
+    t.length = t.data.length;
+    let sum = 0;
+    const alignedLen = (t.length + 3) & ~3;
+    const paddedBuf = Buffer.alloc(alignedLen, 0);
+    t.data.copy(paddedBuf);
+    for (let i = 0; i < alignedLen; i += 4) {
+      sum = (sum + paddedBuf.readUInt32BE(i)) >>> 0;
+    }
+    t.checksum = sum;
+    currentOffset += alignedLen;
+  }
+
+  const outBuf = Buffer.alloc(currentOffset, 0);
+  fontBuf.copy(outBuf, 0, 0, 12);
+  outBuf.writeUInt16BE(tables.length, 4);
+
+  for (let i = 0; i < tables.length; i++) {
+    const t = tables[i];
+    const recOff = 12 + i * 16;
+    outBuf.write(t.tag, recOff, 4, 'ascii');
+    outBuf.writeUInt32BE(t.checksum, recOff + 4);
+    outBuf.writeUInt32BE(t.offset, recOff + 8);
+    outBuf.writeUInt32BE(t.length, recOff + 12);
+    t.data.copy(outBuf, t.offset);
+  }
+
+  const headTable = tables.find(t => t.tag === 'head');
+  if (headTable) {
+    outBuf.writeUInt32BE(0, headTable.offset + 8);
+    let fontSum = 0;
+    for (let i = 0; i < outBuf.length; i += 4) {
+      fontSum = (fontSum + outBuf.readUInt32BE(i)) >>> 0;
+    }
+    const checkSumAdj = (0xB1B0AFBA - fontSum) >>> 0;
+    outBuf.writeUInt32BE(checkSumAdj, headTable.offset + 8);
+  }
+
+  return outBuf;
+}
+
 const FONTS_CONFIG = [
   {
     name: 'FreeSerifAvvaShenouda.ttf',
@@ -140,7 +272,6 @@ function stripFontRestrictions(filePath) {
       if (fsType !== 0) {
         buf.writeUInt16BE(0, os2Offset + 8); // Remove embedding restriction
 
-        // Recalculate OS/2 table checksum
         let sum = 0;
         const alignedLength = (os2Length + 3) & ~3;
         for (let i = 0; i < alignedLength; i += 4) {
@@ -150,7 +281,6 @@ function stripFontRestrictions(filePath) {
         }
         buf.writeUInt32BE(sum, os2TableRecordOffset + 4);
 
-        // Recalculate checkSumAdjustment in 'head'
         if (headOffset > 0) {
           buf.writeUInt32BE(0, headOffset + 8);
           let fontSum = 0;
@@ -188,7 +318,7 @@ async function main() {
       let isValid = false;
       if (fs.existsSync(target)) {
         const stats = fs.statSync(target);
-        if (stats.size === font.size) {
+        if (stats.size > 100000) {
           try {
             const fd = fs.openSync(target, 'r');
             const buffer = Buffer.alloc(4);
@@ -201,10 +331,6 @@ async function main() {
           } catch (e) {
             isValid = false;
           }
-        }
-        if (!isValid) {
-          console.warn(`[ensure-font] Font file at ${target} has incorrect size/header (${stats.size} vs expected ${font.size}), replacing with fresh binary...`);
-          try { fs.unlinkSync(target); } catch (e) {}
         }
       }
 
@@ -234,10 +360,99 @@ async function main() {
       }
     }
   }
+
+  // Create uncollided ArabicTimes.ttf and ArabicTimesBold.ttf
+  const dirs = [
+    path.join(process.cwd(), 'public', 'fonts'),
+    path.join(process.cwd(), 'src', 'assets', 'fonts'),
+  ];
+
+  for (const d of dirs) {
+    const regularSrc = path.join(d, 'TimesNewRoman.ttf');
+    const boldSrc = path.join(d, 'TimesNewRomanBold.ttf');
+    
+    if (fs.existsSync(regularSrc)) {
+      const regBuf = fs.readFileSync(regularSrc);
+      const rebuiltReg = rebuildFontNameTable(regBuf, 'ArabicTimes', 'Regular', 'ArabicTimes-Regular');
+      const regDest = path.join(d, 'ArabicTimes.ttf');
+      fs.writeFileSync(regDest, rebuiltReg);
+      const regWoffDest = path.join(d, 'ArabicTimes.woff');
+      fs.writeFileSync(regWoffDest, ttfToWoff(rebuiltReg));
+      console.log(`[ensure-font] Generated uncollided ArabicTimes font at ${regDest} and ${regWoffDest}`);
+    }
+
+    if (fs.existsSync(boldSrc)) {
+      const boldBuf = fs.readFileSync(boldSrc);
+      const rebuiltBold = rebuildFontNameTable(boldBuf, 'ArabicTimes', 'Bold', 'ArabicTimes-Bold');
+      const boldDest = path.join(d, 'ArabicTimesBold.ttf');
+      fs.writeFileSync(boldDest, rebuiltBold);
+      const boldWoffDest = path.join(d, 'ArabicTimesBold.woff');
+      fs.writeFileSync(boldWoffDest, ttfToWoff(rebuiltBold));
+      console.log(`[ensure-font] Generated uncollided ArabicTimesBold font at ${boldDest} and ${boldWoffDest}`);
+    }
+  }
+
+  // Generate embedded base64 CSS file
+  try {
+    const arabicRegBuf = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'ArabicTimes.ttf'));
+    const arabicBoldBuf = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'ArabicTimesBold.ttf'));
+    const copticBuf = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'FreeSerifAvvaShenouda.ttf'));
+
+    const b64ArabicReg = arabicRegBuf.toString('base64');
+    const b64ArabicBold = arabicBoldBuf.toString('base64');
+    const b64Coptic = copticBuf.toString('base64');
+
+    const embeddedCss = `
+/* Embedded uncollided fonts for 100% mobile compatibility */
+@font-face {
+  font-family: 'ArabicTimes';
+  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicReg}') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ArabicTimes';
+  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicBold}') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TimesArabic';
+  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicReg}') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TimesArabic';
+  src: url('data:font/truetype;charset=utf-8;base64,${b64ArabicBold}') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreeSerifAvvaShenouda';
+  src: url('data:font/truetype;charset=utf-8;base64,${b64Coptic}') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+`;
+    fs.writeFileSync(path.join(process.cwd(), 'src', 'embedded-fonts.css'), embeddedCss);
+    console.log('[ensure-font] Generated embedded-fonts.css');
+  } catch (err) {
+    console.error('[ensure-font] Could not generate embedded-fonts.css:', err.message);
+  }
 }
 
 main().catch((err) => {
   console.error('[ensure-font] Error:', err);
-  process.exit(0); // Do not fail the build if network download fails, fallback to local files
+  process.exit(0);
 });
 
