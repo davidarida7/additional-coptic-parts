@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 import { LibraryItem, Language, AppSettings } from '../types.ts';
 
 interface ReaderProps {
@@ -11,35 +11,75 @@ interface ReaderProps {
 }
 
 interface ComputedSlide {
+  id: string;
   type: 'title' | 'content';
   sectionTitle: string;
   sectionId: string;
+  partIndex: number;
+  subSlideIndex: number;
+  totalSubSlides: number;
   content?: { [key in Language]?: string[] };
   slideIndex: number;
   totalSlidesInSection: number;
 }
 
-export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId, targetPartIndex, onTargetReached, onOverflow }) => {
+export const Reader: React.FC<ReaderProps> = ({ 
+  book, 
+  settings, 
+  targetSectionId, 
+  targetPartIndex, 
+  onTargetReached, 
+  onOverflow 
+}) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [dimensions, setDimensions] = useState({ 
+    width: typeof window !== 'undefined' ? window.innerWidth : 1024, 
+    height: typeof window !== 'undefined' ? window.innerHeight : 768 
+  });
+
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lastBookIdRef = useRef<string | null>(null);
+  const lastPositionRef = useRef<{ sectionId: string; partIndex: number; subSlideIndex: number; isTitle: boolean } | null>(null);
 
   const primaryLangs = [Language.ENGLISH, Language.COPTIC, Language.ARABIC];
   const secondaryLangs = [Language.TRANSLITERATED_ENGLISH, Language.TRANSLITERATED_ARABIC];
 
+  // Track window and container dimensions
+  useLayoutEffect(() => {
+    const updateDims = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth || window.innerWidth,
+          height: containerRef.current.clientHeight || window.innerHeight
+        });
+      } else {
+        setDimensions({
+          width: window.innerWidth,
+          height: window.innerHeight
+        });
+      }
+    };
+    updateDims();
+    const ro = new ResizeObserver(updateDims);
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener('resize', updateDims);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateDims);
+    };
+  }, []);
+
   /**
-   * REVISED HEIGHT-PARITY FOOTPRINTS:
-   * To match column heights, we must give "taller" scripts more horizontal space.
-   * Arabic is dense vertically, so we increase its horizontal footprint to squash its height.
+   * Column width footprints for balanced layout
    */
   const getLangHorizontalFootprint = (lang: Language) => {
     switch (lang) {
-      case Language.COPTIC: return 2.2; 
-      case Language.ARABIC: return 1.6; // Increased further for better height parity
-      case Language.TRANSLITERATED_ARABIC: return 1.4; 
-      case Language.TRANSLITERATED_ENGLISH: return 1.15;
-      default: return 1.15;
+      case Language.COPTIC: return 2.0; 
+      case Language.ARABIC: return 1.5;
+      case Language.TRANSLITERATED_ARABIC: return 1.35; 
+      case Language.TRANSLITERATED_ENGLISH: return 1.1;
+      default: return 1.1;
     }
   };
 
@@ -52,55 +92,384 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
     }
   };
 
+  /**
+   * Estimates the rendered pixel height of row `r` within `content`
+   * based on font scale, line counts, and available horizontal column widths.
+   */
+  const estimateRowHeight = (
+    r: number, 
+    content: { [key in Language]?: string[] }, 
+    currentSettings: AppSettings, 
+    containerWidth: number
+  ): number => {
+    // Leave horizontal margin padding (px-3/px-6)
+    const effectiveWidth = Math.max(280, containerWidth - 48);
+    
+    // Active primary languages in this part
+    const slideActivePrimary = primaryLangs.filter(l => 
+      currentSettings.languages.includes(l) && content[l]?.some(t => Boolean(t && t.trim()))
+    );
+    
+    const pressure = Math.pow(currentSettings.fontSize / 22, 1.2);
+    const primaryWeights = slideActivePrimary.map(l => {
+      const stanzas = content[l] || [];
+      const maxLen = stanzas.reduce((m, s) => Math.max(m, s ? s.length : 0), 0);
+      const footprint = getLangHorizontalFootprint(l);
+      return Math.max(80, maxLen * footprint * pressure);
+    });
+    const totalWeight = primaryWeights.reduce((a, b) => a + b, 0) || 1;
+
+    let maxPrimaryH = 0;
+    const totalGap = (slideActivePrimary.length - 1) * 16;
+    const usablePrimaryW = Math.max(100, effectiveWidth - totalGap);
+
+    slideActivePrimary.forEach((l, idx) => {
+      const text = content[l]?.[r] || '';
+      if (!text) return;
+      
+      const colPx = Math.max(80, usablePrimaryW * (primaryWeights[idx] / totalWeight));
+      const scaledFont = getScaledFontSize(l, currentSettings.fontSize);
+      
+      let charWidthFactor = 0.44;
+      let lineHeightFactor = 1.28;
+      if (l === Language.COPTIC) {
+        charWidthFactor = 0.48;
+        lineHeightFactor = 1.30;
+      } else if (l === Language.ARABIC) {
+        charWidthFactor = 0.44;
+        lineHeightFactor = 1.40;
+      }
+      
+      const approxCharWidth = Math.max(5, scaledFont * charWidthFactor);
+      const charsPerLine = Math.max(1, Math.floor(colPx / approxCharWidth));
+      
+      const words = text.split(/\s+/).filter(Boolean);
+      let lines = 1;
+      let currentLineLen = 0;
+      words.forEach(w => {
+        if (currentLineLen + w.length + 1 > charsPerLine) {
+          lines++;
+          currentLineLen = w.length;
+        } else {
+          currentLineLen += (currentLineLen === 0 ? w.length : w.length + 1);
+        }
+      });
+      
+      const colHeight = lines * (scaledFont * lineHeightFactor);
+      if (colHeight > maxPrimaryH) maxPrimaryH = colHeight;
+    });
+
+    // Active secondary languages (transliterations)
+    const slideActiveSecondary = secondaryLangs.filter(l => 
+      currentSettings.languages.includes(l) && content[l]?.some(t => Boolean(t && t.trim()))
+    );
+    let maxSecondaryH = 0;
+    if (slideActiveSecondary.length > 0) {
+      const secColPx = (effectiveWidth - (slideActiveSecondary.length - 1) * 12) / slideActiveSecondary.length;
+      slideActiveSecondary.forEach(l => {
+        const text = content[l]?.[r] || '';
+        if (!text) return;
+        const scaledFont = getScaledFontSize(l, currentSettings.fontSize);
+        const approxCharWidth = Math.max(4.5, scaledFont * 0.42);
+        const charsPerLine = Math.max(1, Math.floor(secColPx / approxCharWidth));
+        const words = text.split(/\s+/).filter(Boolean);
+        let lines = 1;
+        let currentLineLen = 0;
+        words.forEach(w => {
+          if (currentLineLen + w.length + 1 > charsPerLine) {
+            lines++;
+            currentLineLen = w.length;
+          } else {
+            currentLineLen += (currentLineLen === 0 ? w.length : w.length + 1);
+          }
+        });
+        const colHeight = lines * (scaledFont * 1.25);
+        if (colHeight > maxSecondaryH) maxSecondaryH = colHeight;
+      });
+    }
+
+    return Math.max(28, maxPrimaryH + (maxSecondaryH > 0 ? maxSecondaryH + 6 : 0));
+  };
+
+  /**
+   * Helper to split a long single row into multiple text chunks if it exceeds slide height on its own
+   */
+  const splitSingleRowIntoChunks = (
+    content: { [key in Language]?: string[] }, 
+    rowIndex: number, 
+    numChunks: number
+  ): { [key in Language]?: string[] }[] => {
+    const chunkedList: { [key in Language]?: string[] }[] = Array.from({ length: numChunks }, () => ({}));
+    
+    (Object.keys(content) as Language[]).forEach(lang => {
+      const fullText = content[lang]?.[rowIndex] || '';
+      if (!fullText) return;
+      
+      const words = fullText.split(/\s+/).filter(Boolean);
+      if (words.length <= numChunks) {
+        chunkedList[0][lang] = [fullText];
+        return;
+      }
+      
+      const wordsPerChunk = Math.ceil(words.length / numChunks);
+      for (let c = 0; c < numChunks; c++) {
+        const chunkWords = words.slice(c * wordsPerChunk, (c + 1) * wordsPerChunk);
+        if (chunkWords.length > 0) {
+          chunkedList[c][lang] = [chunkWords.join(' ')];
+        }
+      }
+    });
+
+    return chunkedList.filter(c => Object.keys(c).length > 0);
+  };
+
+  /**
+   * DYNAMIC OVERFLOW PAGINATION ENGINE:
+   * Generates slides where text fills the full viewing area down to right above
+   * the "Size" (bottom-left) and "View/Slide" (bottom-right) cards before carrying over.
+   */
   const allSlides = useMemo(() => {
     if (!book || !book.sections) return [];
     const computed: ComputedSlide[] = [];
     
+    // Top clearance: ~24px, Bottom clearance for Size & View cards: ~96px -> total ~120px
+    const availableHeight = Math.max(160, dimensions.height - 120);
+
     book.sections.forEach(section => {
-      computed.push({
+      const sectionSlides: ComputedSlide[] = [];
+
+      // Section Title Slide
+      const titleSlide: ComputedSlide = {
+        id: `title-${section.id}`,
         type: 'title',
         sectionTitle: section.title,
         sectionId: section.id,
+        partIndex: -1,
+        subSlideIndex: 0,
+        totalSubSlides: 1,
         slideIndex: 0,
-        totalSlidesInSection: section.parts.length,
+        totalSlidesInSection: 0,
+      };
+      sectionSlides.push(titleSlide);
+
+      // Section Content Parts
+      section.parts.forEach((part, partIdx) => {
+        const totalRows = (Object.values(part.content) as (string[] | undefined)[]).reduce(
+          (max: number, arr) => Math.max(max, arr?.length || 0), 
+          0
+        );
+
+        if (totalRows === 0) {
+          sectionSlides.push({
+            id: `content-${section.id}-${partIdx}-0`,
+            type: 'content',
+            sectionTitle: section.title,
+            sectionId: section.id,
+            partIndex: partIdx,
+            subSlideIndex: 0,
+            totalSubSlides: 1,
+            content: part.content,
+            slideIndex: 0,
+            totalSlidesInSection: 0,
+          });
+          return;
+        }
+
+        // Pack rows into sub-slides
+        const subSlidesContent: { [key in Language]?: string[] }[] = [];
+        let currentSlideRows: number[] = [];
+        let currentSlideH = 0;
+        const rowGap = 24; // Space between rows
+
+        for (let r = 0; r < totalRows; r++) {
+          const rowH = estimateRowHeight(r, part.content, settings, dimensions.width);
+
+          // If a single row is larger than available height by itself
+          if (rowH > availableHeight) {
+            // Push previous accumulated rows if any
+            if (currentSlideRows.length > 0) {
+              const slideContent: { [key in Language]?: string[] } = {};
+              (Object.keys(part.content) as Language[]).forEach(lang => {
+                slideContent[lang] = currentSlideRows
+                  .map(i => part.content[lang]?.[i])
+                  .filter((t): t is string => Boolean(t && t.trim()));
+              });
+              subSlidesContent.push(slideContent);
+              currentSlideRows = [];
+              currentSlideH = 0;
+            }
+
+            // Split this huge row across multiple sub-slides
+            const numChunks = Math.max(2, Math.ceil(rowH / availableHeight));
+            const chunks = splitSingleRowIntoChunks(part.content, r, numChunks);
+            chunks.forEach(chunk => {
+              subSlidesContent.push(chunk);
+            });
+            continue;
+          }
+
+          const addedH = currentSlideRows.length === 0 ? rowH : rowH + rowGap;
+          if (currentSlideRows.length > 0 && currentSlideH + addedH > availableHeight) {
+            // Push current slide and start a new one for overflow
+            const slideContent: { [key in Language]?: string[] } = {};
+            (Object.keys(part.content) as Language[]).forEach(lang => {
+              slideContent[lang] = currentSlideRows
+                .map(i => part.content[lang]?.[i])
+                .filter((t): t is string => Boolean(t && t.trim()));
+            });
+            subSlidesContent.push(slideContent);
+            currentSlideRows = [r];
+            currentSlideH = rowH;
+          } else {
+            currentSlideRows.push(r);
+            currentSlideH += addedH;
+          }
+        }
+
+        if (currentSlideRows.length > 0) {
+          const slideContent: { [key in Language]?: string[] } = {};
+          (Object.keys(part.content) as Language[]).forEach(lang => {
+            slideContent[lang] = currentSlideRows
+              .map(i => part.content[lang]?.[i])
+              .filter((t): t is string => Boolean(t && t.trim()));
+          });
+          subSlidesContent.push(slideContent);
+        }
+
+        // Add sub-slides to sectionSlides
+        const totalSubSlides = Math.max(1, subSlidesContent.length);
+        subSlidesContent.forEach((subContent, subIdx) => {
+          sectionSlides.push({
+            id: `content-${section.id}-${partIdx}-${subIdx}`,
+            type: 'content',
+            sectionTitle: section.title,
+            sectionId: section.id,
+            partIndex: partIdx,
+            subSlideIndex: subIdx,
+            totalSubSlides,
+            content: subContent,
+            slideIndex: 0,
+            totalSlidesInSection: 0,
+          });
+        });
       });
 
-      section.parts.forEach((part, partIdx) => {
-        computed.push({
-          type: 'content',
-          sectionTitle: section.title,
-          sectionId: section.id,
-          content: part.content,
-          slideIndex: partIdx + 1,
-          totalSlidesInSection: section.parts.length,
-        });
+      // Update slideIndex and totalSlidesInSection
+      const contentSlidesCount = sectionSlides.filter(s => s.type === 'content').length;
+      let contentIndexCounter = 1;
+
+      sectionSlides.forEach(slide => {
+        slide.totalSlidesInSection = contentSlidesCount;
+        if (slide.type === 'content') {
+          slide.slideIndex = contentIndexCounter++;
+        } else {
+          slide.slideIndex = 0;
+        }
+        computed.push(slide);
       });
     });
 
     return computed;
-  }, [book]);
+  }, [book, settings, dimensions]);
+
+  // Preserve user position across font size / layout recalculations
+  useEffect(() => {
+    if (allSlides.length === 0) return;
+
+    if (lastPositionRef.current) {
+      const { sectionId, partIndex, subSlideIndex, isTitle } = lastPositionRef.current;
+      let targetIdx = -1;
+      if (isTitle) {
+        targetIdx = allSlides.findIndex(s => s.sectionId === sectionId && s.type === 'title');
+      } else {
+        targetIdx = allSlides.findIndex(s => 
+          s.sectionId === sectionId && 
+          s.partIndex === partIndex && 
+          s.subSlideIndex === subSlideIndex
+        );
+        if (targetIdx === -1) {
+          targetIdx = allSlides.findIndex(s => 
+            s.sectionId === sectionId && 
+            s.partIndex === partIndex
+          );
+        }
+        if (targetIdx === -1) {
+          targetIdx = allSlides.findIndex(s => s.sectionId === sectionId);
+        }
+      }
+
+      if (targetIdx !== -1 && targetIdx !== currentSlideIndex) {
+        setCurrentSlideIndex(targetIdx);
+        return;
+      }
+    }
+
+    if (currentSlideIndex >= allSlides.length) {
+      setCurrentSlideIndex(Math.max(0, allSlides.length - 1));
+    }
+  }, [allSlides]);
 
   const safeSlide = allSlides[currentSlideIndex] || null;
 
+  // Record active slide identity
+  useEffect(() => {
+    if (safeSlide) {
+      lastPositionRef.current = {
+        sectionId: safeSlide.sectionId,
+        partIndex: safeSlide.partIndex,
+        subSlideIndex: safeSlide.subSlideIndex,
+        isTitle: safeSlide.type === 'title'
+      };
+    }
+  }, [safeSlide]);
+
   /**
-   * VERTICAL ALIGNMENT ENGINE:
-   * Dynamically balances widths to minimize height discrepancies.
+   * Keyboard Navigation (Left, Right, Space, PageUp, PageDown)
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.getAttribute('contenteditable') === 'true')) {
+        return;
+      }
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        setCurrentSlideIndex(prev => Math.min(allSlides.length - 1, prev + 1));
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        setCurrentSlideIndex(prev => Math.max(0, prev - 1));
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setCurrentSlideIndex(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setCurrentSlideIndex(Math.max(0, allSlides.length - 1));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [allSlides.length]);
+
+  /**
+   * Dynamic column width calculations for active primary languages
    */
   const currentColumnWidths = useMemo(() => {
     if (!safeSlide || safeSlide.type === 'title') return {};
     
     const slideActivePrimary = primaryLangs.filter(l => 
       settings.languages.includes(l) && 
-      safeSlide.content?.[l]?.some(text => text.trim())
+      safeSlide.content?.[l]?.some(text => text && text.trim())
     );
 
-    const pressure = Math.pow(settings.fontSize / 22, 1.4);
+    const pressure = Math.pow(settings.fontSize / 22, 1.2);
 
     const primaryWeights = slideActivePrimary.map(l => {
       const stanzas = safeSlide.content?.[l] || [];
-      const maxStanzaLength = stanzas.reduce((max, s) => Math.max(max, s.length), 0);
+      const maxStanzaLength = stanzas.reduce((max, s) => Math.max(max, s ? s.length : 0), 0);
       const footprint = getLangHorizontalFootprint(l);
-      return Math.max(100, maxStanzaLength * footprint * pressure);
+      return Math.max(80, maxStanzaLength * footprint * pressure);
     });
 
     const totalWeight = primaryWeights.reduce((a, b) => a + b, 0) || 1;
@@ -117,7 +486,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
     if (!safeSlide || safeSlide.type === 'title') return [];
     return primaryLangs.filter(lang => 
       settings.languages.includes(lang) && 
-      safeSlide.content?.[lang]?.some(p => p.trim() !== '')
+      safeSlide.content?.[lang]?.some(p => p && p.trim() !== '')
     );
   }, [safeSlide, settings.languages]);
 
@@ -125,45 +494,36 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
     if (!safeSlide || safeSlide.type === 'title') return [];
     return secondaryLangs.filter(lang => 
       settings.languages.includes(lang) && 
-      safeSlide.content?.[lang]?.some(p => p.trim() !== '')
+      safeSlide.content?.[lang]?.some(p => p && p.trim() !== '')
     );
   }, [safeSlide, settings.languages]);
 
   const getGridStyle = (langs: Language[]) => {
     if (langs.length <= 1 || !safeSlide) return { gridTemplateColumns: '1fr' };
     const frs = langs.map(l => currentColumnWidths[l] || '1fr').join(' ');
-    return { gridTemplateColumns: frs, gap: '0.75rem' }; 
+    return { gridTemplateColumns: frs, gap: '1rem' }; 
   };
 
   useLayoutEffect(() => {
-    const checkOverflow = () => {
-      if (contentRef.current && containerRef.current) {
-        const isTooBig = contentRef.current.scrollHeight > (containerRef.current.clientHeight * 0.98);
-        onOverflow(isTooBig);
-      }
-    };
-    checkOverflow();
-    const ro = new ResizeObserver(checkOverflow);
-    if (containerRef.current) ro.observe(containerRef.current);
-    if (contentRef.current) ro.observe(contentRef.current);
-    return () => ro.disconnect();
-  }, [safeSlide, settings.fontSize, onOverflow, currentColumnWidths]);
+    // Only report overflow if user reached maximum size 72
+    onOverflow(settings.fontSize >= 72);
+  }, [settings.fontSize, onOverflow]);
 
+  // Target navigation from search or sidebar
   useLayoutEffect(() => {
     if (!book || allSlides.length === 0) return;
     const bookChanged = lastBookIdRef.current !== book.id;
+    
     if (targetSectionId) {
       let idx = -1;
-      // If a specific part was requested (from search results)
       if (targetPartIndex !== null) {
         idx = allSlides.findIndex(s => 
           s.sectionId === targetSectionId && 
           s.type === 'content' && 
-          s.slideIndex === targetPartIndex + 1
+          s.partIndex === targetPartIndex
         );
       }
       
-      // Fallback to title slide if part not found or not specified
       if (idx === -1) {
         idx = allSlides.findIndex(s => s.sectionId === targetSectionId);
       }
@@ -175,6 +535,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
         return;
       }
     }
+    
     if (bookChanged) {
       setCurrentSlideIndex(0);
       lastBookIdRef.current = book.id;
@@ -184,8 +545,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
   const handleNav = (e: React.MouseEvent) => {
     const { clientX, currentTarget } = e;
     const { width } = currentTarget.getBoundingClientRect();
-    if (clientX < width / 3) setCurrentSlideIndex(prev => Math.max(0, prev - 1));
-    else setCurrentSlideIndex(prev => Math.min(allSlides.length - 1, prev + 1));
+    if (clientX < width / 3) {
+      setCurrentSlideIndex(prev => Math.max(0, prev - 1));
+    } else {
+      setCurrentSlideIndex(prev => Math.min(allSlides.length - 1, prev + 1));
+    }
   };
 
   if (!book || !safeSlide) {
@@ -219,16 +583,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
 
   // --- RENDER TITLE SLIDE (MULTI-LINE & SCRIPT AWARE) ---
   if (safeSlide.type === 'title') {
-    // Define script ranges
     const LATIN = "[a-zA-Z0-9.,!?;:]";
     const ARABIC = "[\u0600-\u06FF]";
     const COPTIC = "[\u2C80-\u2CFF\u0370-\u03FF]";
 
-    // Refined splitting logic to separate ALL script boundaries
     const titleParts = safeSlide.sectionTitle
       .split(/[/|]|\n/)
       .flatMap(p => {
-        // We look for any transition between English/Latin, Arabic, or Coptic scripts
         const boundaryRegex = new RegExp(
           `(?<=${LATIN})\\s+(?=${ARABIC}|${COPTIC})|` +
           `(?<=${ARABIC}|${COPTIC})\\s+(?=${LATIN})|` +
@@ -241,7 +602,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
       .filter(Boolean);
 
     return (
-      <div onClick={handleNav} className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none items-center justify-center p-8">
+      <div onClick={handleNav} className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none items-center justify-center p-8 pb-28">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#c5a05908_0%,_transparent_70%)]" />
         <div className="max-w-5xl text-center animate-fadeIn flex flex-col gap-6 md:gap-8">
           <div className="w-24 h-[1px] bg-[#c5a059] mx-auto opacity-30" />
@@ -250,6 +611,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
             const isCoptic = /[\u2C80-\u2CFF\u0370-\u03FF]/.test(part);
             return (
               <h2 key={i} 
+                  style={{
+                    fontFamily: isCoptic 
+                      ? "'FreeSerifAvvaShenouda', 'Coptic', serif" 
+                      : isArabic 
+                      ? "'Times New Roman', Times, 'Amiri', serif" 
+                      : undefined
+                  }}
                   className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.15em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
                   dir={isArabic ? 'rtl' : 'ltr'}>
                 {part}
@@ -258,7 +626,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
           })}
           <div className="w-24 h-[1px] bg-[#c5a059] mx-auto opacity-30" />
         </div>
-        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 opacity-20 font-cinzel text-[10px] tracking-[0.8em] gold-text uppercase animate-pulse">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 opacity-20 font-cinzel text-[10px] tracking-[0.8em] gold-text uppercase animate-pulse">
           Click to proceed
         </div>
       </div>
@@ -266,14 +634,21 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
   }
 
   // --- RENDER CONTENT SLIDE ---
+  const rowCount = (Object.values(safeSlide.content || {}) as (string[] | undefined)[]).reduce(
+    (max: number, arr) => Math.max(max, arr?.length || 0), 
+    0
+  );
+
   return (
-    <div ref={containerRef} onClick={handleNav} className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none pt-2 px-2 md:pt-4 md:px-4">
+    <div 
+      ref={containerRef} 
+      onClick={handleNav} 
+      className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden cursor-pointer select-none pt-4 px-3 md:pt-6 md:px-6 pb-28"
+    >
       <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
         <div ref={contentRef} className="w-full max-w-full animate-fadeIn transition-all duration-300">
-          <div className="space-y-6 md:space-y-10">
-            {Array.from({ 
-              length: (Object.values(safeSlide.content!) as (string[] | undefined)[]).reduce((max: number, arr) => Math.max(max, arr?.length || 0), 0)
-            }).map((_, pIdx) => (
+          <div className="space-y-6 md:space-y-8">
+            {Array.from({ length: rowCount }).map((_, pIdx) => (
               <div key={`p-row-${pIdx}`} className="space-y-2">
                 {activePrimary.length > 0 && (
                   <div className="grid w-full items-start" style={getGridStyle(activePrimary)}>
@@ -284,8 +659,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
                       const isCop = lang === Language.COPTIC;
                       return text ? (
                         <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                          <div className={`leading-[1.4] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
-                               style={{ fontSize: `${getScaledFontSize(lang, settings.fontSize)}px` }}>
+                          <div className={`leading-[1.35] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
+                               style={{ 
+                                 fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
+                                 fontFamily: isCop ? "'FreeSerifAvvaShenouda', 'Coptic', serif" : (isEn || isAr) ? "'Times New Roman', Times, serif" : undefined
+                               }}>
                             {text}
                           </div>
                         </div>
@@ -302,11 +680,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
                       const isEn = lang === Language.TRANSLITERATED_ENGLISH;
                       return text ? (
                         <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
-                          <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-eb-garamond' : 'font-inter'}`}
+                          <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
                                style={{ 
                                  fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
-                                 color: '#f1dca7' // Lighter yellow color
-                               }}>
+                                 fontFamily: (isEn || isAr) ? "'Times New Roman', Times, serif" : undefined,
+                                 color: '#f1dca7'
+                                }}>
                             {text}
                           </div>
                         </div>
@@ -320,7 +699,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, settings, targetSectionId,
         </div>
       </div>
 
-      {/* MATCHING SLIDE INDICATOR (BOTTOM RIGHT) - HARMONIZED WITH CONTROLS */}
+      {/* MATCHING SLIDE INDICATOR (BOTTOM RIGHT) - HARMONIZED WITH SIZE CARD */}
       <div className="fixed bottom-4 right-4 z-[80] pointer-events-none">
         <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl pointer-events-auto flex items-center justify-center min-w-[6rem] h-[72px]">
           <div className="flex flex-col items-center">

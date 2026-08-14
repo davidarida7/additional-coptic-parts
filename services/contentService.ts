@@ -1,4 +1,5 @@
 import { LibraryItem, Language, LiturgicalPart, LiturgySection } from '../types.ts';
+import { INITIAL_DATA } from '../constants.tsx';
 
 export class ContentService {
   private static storageKey = 'coptic_reader_library_v2';
@@ -14,12 +15,12 @@ export class ContentService {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (e) {
         console.error("Malformed cache, resetting to empty");
       }
     }
-    return [];
+    return INITIAL_DATA;
   }
 
   static getRawText(): string {
@@ -57,7 +58,8 @@ export class ContentService {
   }
 
   static parseTextToLibrary(text: string): LibraryItem[] {
-    const lines = text.split('\n');
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalized.split('\n');
     const library: LibraryItem[] = [];
     
     let currentCat: LibraryItem | null = null;
@@ -76,8 +78,61 @@ export class ContentService {
       currentSection.parts.push(currentPart);
     };
 
+    const addContentLine = (lang: Language, lineText: string) => {
+      if (!currentPart) {
+        if (!currentSection) {
+          if (!currentBook) {
+            if (!currentCat) {
+              currentCat = {
+                id: 'cat-default',
+                title: 'General',
+                type: 'category',
+                children: []
+              };
+              library.push(currentCat);
+            }
+            currentBook = {
+              id: 'book-default',
+              title: 'Default Book',
+              type: 'book',
+              sections: []
+            };
+            currentCat.children!.push(currentBook);
+          }
+          currentSection = {
+            id: 'sec-default',
+            title: 'Section',
+            parts: []
+          };
+          currentBook.sections!.push(currentSection);
+        }
+        startNewPart();
+      }
+
+      if (currentPart) {
+        if (!currentPart.content[lang]) {
+          currentPart.content[lang] = [];
+        }
+        const cleaned = lineText.trim();
+        if (cleaned) {
+          currentPart.content[lang]!.push(cleaned);
+        }
+      }
+    };
+
+    const langTagMap: { [key: string]: Language } = {
+      'EN': Language.ENGLISH,
+      'COP': Language.COPTIC,
+      'AR': Language.ARABIC,
+      'TRAN-EN': Language.TRANSLITERATED_ENGLISH,
+      'TRAN-AR': Language.TRANSLITERATED_ARABIC,
+    };
+
     lines.forEach(line => {
       const trimmed = line.trim();
+      if (!trimmed) {
+        return;
+      }
       
       if (trimmed.startsWith('###')) {
         const title = trimmed.replace('###', '').trim();
@@ -106,6 +161,7 @@ export class ContentService {
         }
         currentSection = null;
         currentPart = null;
+        currentLang = null;
       } else if (trimmed.startsWith('#')) {
         const title = trimmed.replace('#', '').trim();
         currentCat = { 
@@ -118,18 +174,25 @@ export class ContentService {
         currentBook = null;
         currentSection = null;
         currentPart = null;
+        currentLang = null;
       } else if (trimmed === '---') {
         startNewPart();
         currentLang = null;
-      } else if (trimmed.toUpperCase() === '[EN]') { currentLang = Language.ENGLISH; }
-      else if (trimmed.toUpperCase() === '[COP]') { currentLang = Language.COPTIC; }
-      else if (trimmed.toUpperCase() === '[AR]') { currentLang = Language.ARABIC; }
-      else if (trimmed.toUpperCase() === '[TRAN-EN]') { currentLang = Language.TRANSLITERATED_ENGLISH; }
-      else if (trimmed.toUpperCase() === '[TRAN-AR]') { currentLang = Language.TRANSLITERATED_ARABIC; }
-      else if (currentLang && currentPart) {
-        if (!currentPart.content[currentLang]) currentPart.content[currentLang] = [];
-        if (trimmed) {
-          currentPart.content[currentLang]!.push(trimmed);
+      } else {
+        const tagMatch = trimmed.match(/^\[(EN|COP|AR|TRAN-EN|TRAN-AR)\]\s*:?\s*(.*)$/i);
+        if (tagMatch) {
+          const matchedTag = tagMatch[1].toUpperCase();
+          const targetLanguage = langTagMap[matchedTag];
+          if (targetLanguage) {
+            currentLang = targetLanguage;
+            const inlineText = tagMatch[2].trim();
+            if (inlineText) {
+              addContentLine(currentLang, inlineText);
+            }
+          }
+        } else if (currentLang) {
+          // Each new line under the active language is treated as an individual stanza item
+          addContentLine(currentLang, trimmed);
         }
       }
     });

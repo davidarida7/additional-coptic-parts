@@ -8,10 +8,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Amiri:wght@400;700&family=Inter:wght@300;400;600&family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+    <link rel="preload" href="/fonts/FreeSerifAvvaShenouda.ttf" as="font" type="font/ttf" crossorigin>
     <style>
         @font-face {
+            font-family: 'FreeSerifAvvaShenouda';
+            src: url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype');
+            font-weight: 100 900;
+            font-style: normal;
+            font-display: block;
+        }
+        @font-face {
             font-family: 'Coptic';
-            src: url('https://fonts.cdnfonts.com/s/112344/CopticStandard.woff') format('woff');
+            src: url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype');
+            font-weight: 100 900;
+            font-style: normal;
+            font-display: block;
         }
         body {
             background-color: #000;
@@ -20,10 +31,13 @@
             overflow-x: hidden;
             touch-action: none;
         }
-        .font-coptic { font-family: 'Coptic', serif; }
-        .font-arabic { font-family: 'Amiri', serif; }
+        .font-coptic { 
+            font-family: 'FreeSerifAvvaShenouda', 'Coptic', serif !important; 
+        }
+        .font-arabic { font-family: 'Times New Roman', Times, 'Amiri', serif !important; }
         .font-cinzel { font-family: 'Cinzel', serif; }
-        .font-eb-garamond { font-family: 'EB Garamond', serif; }
+        .font-eb-garamond { font-family: 'Times New Roman', Times, 'EB Garamond', serif; }
+        .font-times, .font-english { font-family: 'Times New Roman', Times, serif !important; }
         
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #000; }
@@ -52,9 +66,10 @@
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>

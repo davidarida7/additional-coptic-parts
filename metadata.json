@@ -1,5 +1,6 @@
 {
   "name": "Additional Coptic Parts",
   "description": "A specialized Coptic liturgical reader for supplementary hymns and prayers with multi-language support.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
