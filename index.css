@@ -69,6 +69,51 @@
 }
 
 @font-face {
+  font-family: 'ArabicTimes';
+  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+       url('/fonts/TimesNewRoman.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ArabicTimes';
+  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+       url('/fonts/TimesNewRoman.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ArabicTimes';
+  src: url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
+       url('/fonts/TimesNewRomanBold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TimesArabic';
+  src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
+       url('/fonts/TimesNewRoman.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TimesArabic';
+  src: url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
+       url('/fonts/TimesNewRomanBold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'Times New Roman';
   src: url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
        url('/fonts/TimesNewRoman.ttf') format('truetype');
@@ -109,7 +154,7 @@
 }
 
 .font-arabic {
-  font-family: 'Times New Roman', 'Times', 'Amiri', serif !important;
+  font-family: 'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', 'Amiri', serif !important;
 }
 
 .font-cinzel {
@@ -117,10 +162,10 @@
 }
 
 .font-eb-garamond {
-  font-family: 'Times New Roman', 'Times', 'EB Garamond', serif !important;
+  font-family: 'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', 'EB Garamond', serif !important;
 }
 
 .font-times, .font-english {
-  font-family: 'Times New Roman', 'Times', serif !important;
+  font-family: 'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', serif !important;
 }
 
