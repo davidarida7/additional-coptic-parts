@@ -665,11 +665,11 @@ export const Reader: React.FC<ReaderProps> = ({
                       return (
                         <div 
                           key={`${lang}-${pIdx}`} 
-                          className={`flex items-start ${colIdx > 0 ? 'pl-3 md:pl-5 border-l border-gray-100/40' : ''} ${!isLast ? 'pr-3 md:pr-5' : ''}`}
+                          className={`flex items-start min-w-0 overflow-hidden ${colIdx > 0 ? 'pl-3 md:pl-5 border-l border-gray-100/40' : ''} ${!isLast ? 'pr-3 md:pr-5' : ''}`}
                         >
                           {text ? (
-                            <div className={`w-full ${isAr ? 'text-right' : 'text-left'}`} dir={isAr ? 'rtl' : 'ltr'}>
-                              <div className={`leading-[1.35] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
+                            <div className={`w-full min-w-0 ${isAr ? 'text-right' : 'text-left'}`} dir={isAr ? 'rtl' : 'ltr'}>
+                              <div className={`leading-[1.35] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic px-1' : isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
                                    style={{ 
                                      fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
                                      fontFamily: isCop 
@@ -700,10 +700,10 @@ export const Reader: React.FC<ReaderProps> = ({
                       return (
                         <div 
                           key={`${lang}-${pIdx}`} 
-                          className={`flex items-start ${colIdx > 0 ? 'pl-3 md:pl-5 border-l border-[#f1dca7]/40' : ''} ${!isLast ? 'pr-3 md:pr-5' : ''}`}
+                          className={`flex items-start min-w-0 overflow-hidden ${colIdx > 0 ? 'pl-3 md:pl-5 border-l border-[#f1dca7]/40' : ''} ${!isLast ? 'pr-3 md:pr-5' : ''}`}
                         >
                           {text ? (
-                            <div className={`w-full ${isAr ? 'text-right' : 'text-left'}`} dir={isAr ? 'rtl' : 'ltr'}>
+                            <div className={`w-full min-w-0 ${isAr ? 'text-right' : 'text-left'}`} dir={isAr ? 'rtl' : 'ltr'}>
                               <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
                                    style={{ 
                                      fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
