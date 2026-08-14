@@ -7,13 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Amiri:wght@400;700&family=Inter:wght@300;400;600&family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Naskh+Arabic:wght@400;700&family=Cinzel:wght@400;700&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="preload" href="/fonts/FreeSerifAvvaShenouda.woff" as="font" type="font/woff" crossorigin>
-    <link rel="preload" href="/fonts/TimesNewRoman.woff" as="font" type="font/woff" crossorigin>
-    <link rel="preload" href="/fonts/TimesNewRomanBold.woff" as="font" type="font/woff" crossorigin>
-    <link rel="preload" href="/fonts/FreeSerifAvvaShenouda.ttf" as="font" type="font/ttf" crossorigin>
-    <link rel="preload" href="/fonts/TimesNewRoman.ttf" as="font" type="font/ttf" crossorigin>
-    <link rel="preload" href="/fonts/TimesNewRomanBold.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="/fonts/ArabicTimes.woff" as="font" type="font/woff" crossorigin>
+    <link rel="preload" href="/fonts/ArabicTimesBold.woff" as="font" type="font/woff" crossorigin>
     <style>
         @font-face {
             font-family: 'FreeSerifAvvaShenouda';
@@ -45,8 +42,7 @@
         @font-face {
             font-family: 'Free Serif Avva Shenouda';
             src: url('/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
-                 url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
-                 url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
+                 url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
             font-display: swap;
@@ -81,9 +77,7 @@
         @font-face {
             font-family: 'ArabicTimes';
             src: url('/fonts/ArabicTimes.woff') format('woff'),
-                 url('/fonts/ArabicTimes.ttf') format('truetype'),
-                 url('/fonts/TimesNewRoman.woff') format('woff'),
-                 url('/fonts/TimesNewRoman.ttf') format('truetype');
+                 url('/fonts/ArabicTimes.ttf') format('truetype');
             font-weight: 100 900;
             font-style: normal;
             font-display: swap;
@@ -91,9 +85,7 @@
         @font-face {
             font-family: 'ArabicTimes';
             src: url('/fonts/ArabicTimes.woff') format('woff'),
-                 url('/fonts/ArabicTimes.ttf') format('truetype'),
-                 url('/fonts/TimesNewRoman.woff') format('woff'),
-                 url('/fonts/TimesNewRoman.ttf') format('truetype');
+                 url('/fonts/ArabicTimes.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
             font-display: swap;
@@ -101,9 +93,7 @@
         @font-face {
             font-family: 'ArabicTimes';
             src: url('/fonts/ArabicTimesBold.woff') format('woff'),
-                 url('/fonts/ArabicTimesBold.ttf') format('truetype'),
-                 url('/fonts/TimesNewRomanBold.woff') format('woff'),
-                 url('/fonts/TimesNewRomanBold.ttf') format('truetype');
+                 url('/fonts/ArabicTimesBold.ttf') format('truetype');
             font-weight: bold;
             font-style: normal;
             font-display: swap;
@@ -111,9 +101,7 @@
         @font-face {
             font-family: 'TimesArabic';
             src: url('/fonts/ArabicTimes.woff') format('woff'),
-                 url('/fonts/ArabicTimes.ttf') format('truetype'),
-                 url('/fonts/TimesNewRoman.woff') format('woff'),
-                 url('/fonts/TimesNewRoman.ttf') format('truetype');
+                 url('/fonts/ArabicTimes.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
             font-display: swap;
@@ -121,49 +109,7 @@
         @font-face {
             font-family: 'TimesArabic';
             src: url('/fonts/ArabicTimesBold.woff') format('woff'),
-                 url('/fonts/ArabicTimesBold.ttf') format('truetype'),
-                 url('/fonts/TimesNewRomanBold.woff') format('woff'),
-                 url('/fonts/TimesNewRomanBold.ttf') format('truetype');
-            font-weight: bold;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Times New Roman';
-            src: url('/fonts/TimesNewRoman.woff') format('woff'),
-                 url('/fonts/TimesNewRoman.ttf') format('truetype'),
-                 url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman.ttf') format('truetype'),
-                 url('https://fonts.gstatic.com/s/amiri/v30/J7aRnpd8CGxBHqUp.ttf') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Times New Roman';
-            src: url('/fonts/TimesNewRomanBold.woff') format('woff'),
-                 url('/fonts/TimesNewRomanBold.ttf') format('truetype'),
-                 url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman%20Bold.ttf') format('truetype'),
-                 url('https://fonts.gstatic.com/s/amiri/v30/J7acnpd8CGxBHp2VkZY4.ttf') format('truetype');
-            font-weight: bold;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Times';
-            src: url('/fonts/TimesNewRoman.woff') format('woff'),
-                 url('/fonts/TimesNewRoman.ttf') format('truetype'),
-                 url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman.ttf') format('truetype'),
-                 url('https://fonts.gstatic.com/s/amiri/v30/J7aRnpd8CGxBHqUp.ttf') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Times';
-            src: url('/fonts/TimesNewRomanBold.woff') format('woff'),
-                 url('/fonts/TimesNewRomanBold.ttf') format('truetype'),
-                 url('https://raw.githubusercontent.com/justrajdeep/fonts/master/Times%20New%20Roman%20Bold.ttf') format('truetype'),
-                 url('https://fonts.gstatic.com/s/amiri/v30/J7acnpd8CGxBHp2VkZY4.ttf') format('truetype');
+                 url('/fonts/ArabicTimesBold.ttf') format('truetype');
             font-weight: bold;
             font-style: normal;
             font-display: swap;
@@ -178,10 +124,18 @@
         .font-coptic { 
             font-family: 'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif !important; 
         }
-        .font-arabic { font-family: 'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', 'Amiri', serif !important; }
-        .font-cinzel { font-family: 'Cinzel', serif !important; }
-        .font-eb-garamond { font-family: 'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', 'EB Garamond', serif !important; }
-        .font-times, .font-english { font-family: 'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', serif !important; }
+        .font-arabic { 
+            font-family: 'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif !important; 
+        }
+        .font-cinzel { 
+            font-family: 'Cinzel', serif !important; 
+        }
+        .font-eb-garamond { 
+            font-family: 'EB Garamond', 'Times New Roman', serif !important; 
+        }
+        .font-times, .font-english { 
+            font-family: 'Times New Roman', 'Times', 'EB Garamond', serif !important; 
+        }
         
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #000; }

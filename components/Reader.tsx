@@ -615,7 +615,7 @@ export const Reader: React.FC<ReaderProps> = ({
                     fontFamily: isCoptic 
                       ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
                       : isArabic 
-                      ? "'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', 'Amiri', serif" 
+                      ? "'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif" 
                       : undefined
                   }}
                   className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.15em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
@@ -665,9 +665,9 @@ export const Reader: React.FC<ReaderProps> = ({
                                  fontFamily: isCop 
                                    ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
                                    : isAr 
-                                   ? "'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', 'Amiri', serif"
+                                   ? "'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif"
                                    : isEn 
-                                   ? "'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', serif" 
+                                   ? "'Times New Roman', 'Times', 'EB Garamond', serif" 
                                    : undefined
                                }}>
                             {text}
@@ -690,9 +690,9 @@ export const Reader: React.FC<ReaderProps> = ({
                                 style={{ 
                                  fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
                                  fontFamily: isAr 
-                                   ? "'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', 'Amiri', serif" 
+                                   ? "'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif" 
                                    : isEn 
-                                   ? "'ArabicTimes', 'TimesArabic', 'Times New Roman', 'Times', serif" 
+                                   ? "'Times New Roman', 'Times', 'EB Garamond', serif" 
                                    : undefined,
                                  color: '#f1dca7'
                                 }}>
