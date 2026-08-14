@@ -40,9 +40,7 @@
 
 @font-face {
   font-family: 'Coptic';
-  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
-       url('/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
-       url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
   font-weight: 100 900;
@@ -52,9 +50,7 @@
 
 @font-face {
   font-family: 'Coptic';
-  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
-       url('/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
-       url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
   font-weight: normal;
@@ -64,88 +60,9 @@
 
 @font-face {
   font-family: 'Coptic';
-  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
-       url('/fonts/FreeSerifAvvaShenouda.woff') format('woff'),
-       url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'ArabicTimes';
-  src: url('./src/assets/fonts/ArabicTimes.woff') format('woff'),
-       url('/fonts/ArabicTimes.woff') format('woff'),
-       url('./src/assets/fonts/ArabicTimes.ttf') format('truetype'),
-       url('/fonts/ArabicTimes.ttf') format('truetype');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'ArabicTimes';
-  src: url('./src/assets/fonts/ArabicTimes.woff') format('woff'),
-       url('/fonts/ArabicTimes.woff') format('woff'),
-       url('./src/assets/fonts/ArabicTimes.ttf') format('truetype'),
-       url('/fonts/ArabicTimes.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'ArabicTimes';
-  src: url('./src/assets/fonts/ArabicTimesBold.woff') format('woff'),
-       url('/fonts/ArabicTimesBold.woff') format('woff'),
-       url('./src/assets/fonts/ArabicTimesBold.ttf') format('truetype'),
-       url('/fonts/ArabicTimesBold.ttf') format('truetype');
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'TimesArabic';
-  src: url('./src/assets/fonts/ArabicTimes.woff') format('woff'),
-       url('/fonts/ArabicTimes.woff') format('woff'),
-       url('./src/assets/fonts/ArabicTimes.ttf') format('truetype'),
-       url('/fonts/ArabicTimes.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'TimesArabic';
-  src: url('./src/assets/fonts/ArabicTimesBold.woff') format('woff'),
-       url('/fonts/ArabicTimesBold.woff') format('woff'),
-       url('./src/assets/fonts/ArabicTimesBold.ttf') format('truetype'),
-       url('/fonts/ArabicTimesBold.ttf') format('truetype');
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Times New Roman';
-  src: url('./src/assets/fonts/TimesNewRoman.woff') format('woff'),
-       url('/fonts/TimesNewRoman.woff') format('woff'),
-       url('./src/assets/fonts/TimesNewRoman.ttf') format('truetype'),
-       url('/fonts/TimesNewRoman.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Times New Roman';
-  src: url('./src/assets/fonts/TimesNewRomanBold.woff') format('woff'),
-       url('/fonts/TimesNewRomanBold.woff') format('woff'),
-       url('./src/assets/fonts/TimesNewRomanBold.ttf') format('truetype'),
-       url('/fonts/TimesNewRomanBold.ttf') format('truetype');
   font-weight: bold;
   font-style: normal;
   font-display: swap;
@@ -156,7 +73,7 @@
 }
 
 .font-arabic {
-  font-family: 'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif !important;
+  font-family: 'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif !important;
 }
 
 .font-cinzel {
@@ -164,10 +81,9 @@
 }
 
 .font-eb-garamond {
-  font-family: 'EB Garamond', 'Times New Roman', serif !important;
+  font-family: 'Times New Roman', Times, 'EB Garamond', serif !important;
 }
 
 .font-times, .font-english {
-  font-family: 'Times New Roman', 'Times', 'EB Garamond', serif !important;
+  font-family: 'Times New Roman', Times, serif !important;
 }
-

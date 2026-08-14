@@ -615,7 +615,7 @@ export const Reader: React.FC<ReaderProps> = ({
                     fontFamily: isCoptic 
                       ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
                       : isArabic 
-                      ? "'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif" 
+                      ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
                       : undefined
                   }}
                   className={`text-3xl md:text-6xl gold-text font-bold tracking-[0.15em] uppercase leading-tight drop-shadow-2xl ${isArabic ? 'font-arabic' : isCoptic ? 'font-coptic' : 'font-cinzel'}`}
@@ -665,9 +665,9 @@ export const Reader: React.FC<ReaderProps> = ({
                                  fontFamily: isCop 
                                    ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
                                    : isAr 
-                                   ? "'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif"
+                                   ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
                                    : isEn 
-                                   ? "'Times New Roman', 'Times', 'EB Garamond', serif" 
+                                   ? "'Times New Roman', Times, serif" 
                                    : undefined
                                }}>
                             {text}
@@ -687,12 +687,12 @@ export const Reader: React.FC<ReaderProps> = ({
                       return text ? (
                         <div key={`${lang}-${pIdx}`} className={isAr ? 'text-right' : 'text-left'} dir={isAr ? 'rtl' : 'ltr'}>
                           <div className={`leading-snug transition-all italic ${isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
-                                style={{ 
+                               style={{ 
                                  fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
                                  fontFamily: isAr 
-                                   ? "'ArabicTimes', 'TimesArabic', 'Amiri', 'Noto Naskh Arabic', serif" 
+                                   ? "'Noto Naskh Arabic', 'Traditional Arabic', 'Times New Roman', Times, serif" 
                                    : isEn 
-                                   ? "'Times New Roman', 'Times', 'EB Garamond', serif" 
+                                   ? "'Times New Roman', Times, serif" 
                                    : undefined,
                                  color: '#f1dca7'
                                 }}>
