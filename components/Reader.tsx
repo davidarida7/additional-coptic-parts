@@ -613,7 +613,7 @@ export const Reader: React.FC<ReaderProps> = ({
               <h2 key={i} 
                   style={{
                     fontFamily: isCoptic 
-                      ? "'FreeSerifAvvaShenouda', 'Coptic', 'Noto Serif Coptic', serif" 
+                      ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" 
                       : isArabic 
                       ? "'Times New Roman', Times, 'Amiri', serif" 
                       : undefined
@@ -662,7 +662,7 @@ export const Reader: React.FC<ReaderProps> = ({
                           <div className={`leading-[1.35] text-gray-100 transition-all font-normal ${isCop ? 'font-coptic tracking-tight' : isAr ? 'font-arabic' : isEn ? 'font-times' : 'font-inter'}`}
                                style={{ 
                                  fontSize: `${getScaledFontSize(lang, settings.fontSize)}px`,
-                                 fontFamily: isCop ? "'FreeSerifAvvaShenouda', 'Coptic', 'Noto Serif Coptic', serif" : (isEn || isAr) ? "'Times New Roman', Times, serif" : undefined
+                                 fontFamily: isCop ? "'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif" : (isEn || isAr) ? "'Times New Roman', Times, serif" : undefined
                                }}>
                             {text}
                           </div>

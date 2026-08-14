@@ -9,6 +9,36 @@
 }
 
 @font-face {
+  font-family: 'FreeSerifAvvaShenouda';
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreeSerifAvvaShenouda';
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Free Serif Avva Shenouda';
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'Coptic';
   src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
        url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
@@ -18,8 +48,28 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Coptic';
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Coptic';
+  src: url('./src/assets/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('/fonts/FreeSerifAvvaShenouda.ttf') format('truetype'),
+       url('https://st-takla.org/Dlds/fonts/webfont/FreeSerifAvvaShenouda.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
 .font-coptic {
-  font-family: 'FreeSerifAvvaShenouda', 'Coptic', 'Noto Serif Coptic', 'Noto Sans Coptic', serif !important;
+  font-family: 'FreeSerifAvvaShenouda', 'Free Serif Avva Shenouda', 'Coptic', serif !important;
 }
 
 .font-arabic {
